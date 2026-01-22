@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>JS Rhythm Game Prototype</title>
+    <style>
+        body {
+            margin: 0;
+            background: #222;
+            color: white;
+            font-family: 'Courier New', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        canvas {
+            background: #000;
+            border: 2px solid #555;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+        }
+        #start-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            cursor: pointer;
+            z-index: 10;
+        }
+        h1 { margin: 0 0 20px 0; color: cyan; text-shadow: 0 0 10px cyan; }
+        p { margin: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div>SCORE: <span id="score">0</span></div>
+        <div>COMBO: <span id="combo">0</span></div>
+        <div id="debug"></div>
+    </div>
+
+    <div id="start-overlay">
+        <h1>JS RHYTHM CORE</h1>
+        <p>Click to Start</p>
+        <p>Controls: [D] [F] [J] [K]</p>
+    </div>
+
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+    <script src="main.js"></script>
+</body>
+</html>
