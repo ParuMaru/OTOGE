@@ -1,7 +1,7 @@
 // js/main.js
 
-import { CONFIG, SONGS } from './constants.js'; // ★CHARTではなくSONGSをインポート
-import { initAudio, playSound } from './audio.js';
+import { CONFIG, SONGS } from './constants.js'; 
+import { initAudio, playSound, loadAudio, playMusic, stopMusic } from './audio.js';
 import { initRenderer, renderGame } from './renderer.js';
 
 // DOM要素の取得
@@ -33,7 +33,10 @@ const state = {
     laneLights: [0, 0, 0, 0],
     hitEffects: [],
     lastJudge: { text: '', time: -10, color: '#fff', timing: '' },
-    judgeCounts: { perfect: 0, great: 0, bad: 0, miss: 0 }
+    judgeCounts: { perfect: 0, great: 0, bad: 0, miss: 0 },
+    
+    isRecording: false, // 録音モードかどうか
+    recordedNotes: [],  // 記録したノーツを貯めておく場所
 };
 
 // 初期化
@@ -54,61 +57,143 @@ function toTitle() {
 
 // 2. 選曲画面へ
 function toSelect() {
-    state.isPlaying = false; // ゲーム停止
+    state.isPlaying = false;
+    stopMusic();
     switchScene('select');
     
-    // 曲リストを生成してボタンとして配置
     songListContainer.innerHTML = '';
     SONGS.forEach(song => {
+        // コンテナを作る
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.marginBottom = '10px';
+
+        // 1. 通常のプレイボタン
         const btn = document.createElement('div');
         btn.className = 'song-btn';
+        btn.style.margin = '0'; // レイアウト調整
         btn.innerHTML = `
             <div style="font-size: 1.2rem; font-weight: bold;">${song.title}</div>
             <div class="song-info">LEVEL: ${song.level}</div>
         `;
-        // クリックしたらその曲でゲーム開始
-        btn.onclick = () => startGame(song);
-        songListContainer.appendChild(btn);
+        btn.onclick = () => startGame(song, false); // false = 通常プレイ
+        
+        // 2. ★追加: レコーディングボタン
+        const recBtn = document.createElement('button');
+        recBtn.innerText = 'REC';
+        recBtn.style.height = '100%';
+        recBtn.style.marginLeft = '10px';
+        recBtn.style.padding = '10px 20px';
+        recBtn.style.background = '#ff4444';
+        recBtn.style.color = 'white';
+        recBtn.style.border = 'none';
+        recBtn.style.cursor = 'pointer';
+        recBtn.style.fontWeight = 'bold';
+        
+        // クリックしたら「レコーディングモード」で開始
+        recBtn.onclick = () => startGame(song, true); // true = 録音モード
+
+        row.appendChild(btn);
+        row.appendChild(recBtn);
+        songListContainer.appendChild(row);
     });
 }
 
 // 3. ゲーム画面へ (startGame)
-function startGame(songData) {
+async function startGame(songData, isRecMode = false) {
     state.selectedSong = songData; // 選んだ曲を保存
+    state.isRecording = isRecMode;
+    
+    const overlay = document.getElementById('scene-select');
+    const originalText = overlay.innerHTML;
+    overlay.innerHTML = '<h1 style="color:white">LOADING DATA...</h1>';
+
+    try {
+        // パスの構築
+        const base = `${CONFIG.SONG_BASE_PATH}${songData.folder}/`;
+        const musicUrl = base + 'music.mp3';
+        const chartUrl = base + 'chart.json';
+
+        // ★重要: 音楽と譜面を「並列」で読み込む (待ち時間が短縮される)
+        const [musicBuffer, chartData] = await Promise.all([
+            loadAudio(musicUrl),            // 音楽のロード
+            fetch(chartUrl).then(res => res.json()) // JSONのロードとパース
+        ]);
+
+        // --- 読み込み完了後の処理 ---
     
     // 状態リセット
-    state.score = 0;
-    state.combo = 0;
-    state.maxCombo = 0;
-    state.judgeCounts = { perfect: 0, great: 0, bad: 0, miss: 0 };
-    state.hitEffects = [];
-    state.lastJudge = { text: '', time: -10, color: '#fff' };
-    
-    // ★重要: 選んだ曲の譜面(chart)をコピーしてセット
-    state.notes = songData.chart.map(n => ({ ...n, hit: false, visible: true }));
+        state.score = 0;
+        state.combo = 0;
+        state.maxCombo = 0;
+        state.judgeCounts = { perfect: 0, great: 0, bad: 0, miss: 0 };
+        state.hitEffects = [];
+        state.lastJudge = { text: '', time: -10, color: '#fff', timing: '' };
+        
+        if (state.isRecording) {
+            // レコーディング時は「白紙」からスタート
+            state.notes = []; 
+            state.recordedNotes = [];
+            console.log("🔴 RECORDING START! キーを叩いて譜面を作ってください");
+        } else {
+            // 通常時はJSONから読み込み
+            state.notes = chartData.notes.map(n => ({ ...n, hit: false, visible: true }));
+        }
+        // 音楽再生 & 同期
+        state.isPlaying = true;
+        playMusic(musicBuffer);
+        state.startTime = state.audioCtx.currentTime - (songData.offset || 0);
 
-    // 時間管理
-    state.startTime = state.audioCtx.currentTime + CONFIG.START_DELAY;
-    state.isPlaying = true;
+        // 画面切り替え
+        overlay.innerHTML = originalText;
+        switchScene('game');
+        
+        //曲の長さ
+        state.musicDuration = musicBuffer.duration;
+        
+        requestAnimationFrame(gameLoop);
 
-    // 画面切り替え
-    switchScene('game');
-    
-    // ループ開始
-    requestAnimationFrame(gameLoop);
-    scheduleMetronome();
+    } catch (error) {
+        console.error("ロードエラー:", error);
+        alert("データの読み込みに失敗しました。\nassetsフォルダの構成を確認してください。");
+        overlay.innerHTML = originalText;
+    }
 }
 
 // 4. リザルト画面へ (finishGame)
 function finishGame() {
     state.isPlaying = false;
+    // レコーディング結果の出力
+    if (state.isRecording) {
+        // 時間順にソート（念のため）
+        state.recordedNotes.sort((a, b) => a.time - b.time);
+
+        // JSON形式にする
+        const jsonOutput = JSON.stringify({ notes: state.recordedNotes }, null, 2);
+        
+        console.log("▼▼▼▼▼ 下のデータを chart.json にコピペしてください ▼▼▼▼▼");
+        console.log(jsonOutput);
+        console.log("▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲");
+        
+        alert("コンソール(F12)にJSONデータを出力しました！\nこれを chart.json に上書きしてください。");
+        
+        // リザルト画面に行かずに選曲へ戻る
+        toSelect(); 
+        return;
+    }
+    
     switchScene('result');
 
     // ランク計算
+    
+    const totalNotes = state.notes.length; 
+    const maxScore = totalNotes * 1000; //理論値
+    
     let rank = 'C';
-    if (state.score >= state.selectedSong.chart.length*1000*0.85) rank = 'S';
-    else if (state.score >= state.selectedSong.chart.length*1000*0.7) rank = 'A';
-    else if (state.score >= state.selectedSong.chart.length*1000*0.6) rank = 'B';
+    if (state.score >= maxScore*0.85) rank = 'S';
+    else if (state.score >= maxScore*0.7) rank = 'A';
+    else if (state.score >= maxScore*0.6) rank = 'B';
 
     scenes.result.innerHTML = `
         <h1 style="color: #ff0055; margin-bottom: 10px;">FINISH!</h1>
@@ -166,19 +251,72 @@ window.addEventListener('keydown', e => {
     state.laneLights[keyIndex] = 1.0;
 
     const currentSongTime = state.audioCtx.currentTime - state.startTime;
+    
+    // ★ レコーディングモードの処理（クオンタイズ版）
+    if (state.isRecording) {
+        // 1. 曲のBPMを取得 (未設定ならデフォルト120)
+        const bpm = state.selectedSong.bpm || 120;
+        
+        // 2. 「1拍(4分音符)の長さ」と「16分音符の長さ」を計算
+        // 例: BPM 60なら、1拍は1秒。16分音符はその1/4で0.25秒。
+        const beatDuration = 60 / bpm; 
+        const note16Duration = beatDuration / 4; 
+
+        // 3. 現在時刻 (オフセット考慮)
+        // ※システム遅延補正(CORRECTION)は、クオンタイズする場合は基本的に不要か、
+        //  あるいは「早めに叩きがち」な癖がある場合のみ微調整で入れます。
+        //  今回は「完全にグリッドに合わせる」ので、生の時刻を使います。
+        const rawTime = currentSongTime;
+
+        // 4. クオンタイズ計算（最も近い16分音符の場所に丸める）
+        // Math.round( 現在時間 / 16分音符の間隔 ) * 16分音符の間隔
+        let quantizedTime = Math.round(rawTime / note16Duration) * note16Duration;
+
+        // 小数点第3位に丸める（JSONを綺麗にするため）
+        const time = Math.round(quantizedTime * 1000) / 1000;
+        
+        // マイナスの時間は除外
+        if (time >= 0) {
+            // 重複防止: 全く同じ時間に同じレーンのノーツがあったら追加しない
+            const isDuplicate = state.recordedNotes.some(n => n.time === time && n.lane === keyIndex);
+            
+            if (!isDuplicate) {
+                state.recordedNotes.push({ time: time, lane: keyIndex });
+                console.log(`BPM${bpm} 16分補正: Raw=${rawTime.toFixed(3)} -> Fix=${time}`);
+
+                // 画面表示用
+                state.notes.push({
+                    time: time,
+                    lane: keyIndex,
+                    hit: false,
+                    visible: true
+                });
+                
+                playSound('hit');
+                createHitEffect(keyIndex);
+            }
+        }
+        return; 
+    }
+    
     const targetNote = state.notes
         .filter(n => n.lane === keyIndex && !n.hit && n.visible)
         .sort((a, b) => a.time - b.time)[0];
 
     if (targetNote) {
-        const diff = Math.abs(targetNote.time - currentSongTime);
+        // ノーツの時間(未来) -今の時間
+        // プラスなら「まだ来てないのに押した」＝ FAST
+        // マイナスなら「通り過ぎてから押した」＝ SLOW
+        const rawDiff = targetNote.time - currentSongTime;
+        const diff = Math.abs(rawDiff); // 判定用には絶対値を使う
         if (diff <= CONFIG.JUDGE_WINDOW.BAD) {
             targetNote.hit = true;
             targetNote.visible = false;
             let judge = 'BAD';
             if (diff <= CONFIG.JUDGE_WINDOW.PERFECT) judge = 'PERFECT';
             else if (diff <= CONFIG.JUDGE_WINDOW.GREAT) judge = 'GREAT';
-            handleJudge(judge);
+            const timing = rawDiff > 0 ? 'FAST' : 'SLOW';
+            handleJudge(judge,timing);
             playSound('hit');
             createHitEffect(keyIndex);
         }
@@ -208,24 +346,33 @@ function gameLoop() {
     renderGame(state);
 
     // 終了判定
-    // 曲データの最後を参照するように変更
-    const lastNoteTime = state.selectedSong.chart[state.selectedSong.chart.length - 1].time;
-    if (currentSongTime > lastNoteTime + 2.0) {
-        finishGame();
-        return;
+    if (state.isRecording) {
+        // ★レコーディング時: 曲の長さ + 2秒で終了
+        if (currentSongTime > state.musicDuration + 2.0) {
+            finishGame();
+            return;
+        }
+    } else {
+        // ★通常プレイ時: 最後のノーツ + 2秒で終了 (既存のロジック)
+        if (state.notes.length > 0) {
+            const lastNoteTime = state.notes[state.notes.length - 1].time;
+            if (currentSongTime > lastNoteTime + 2.0) {
+                finishGame();
+                return;
+            }
+        }
     }
-
     requestAnimationFrame(gameLoop);
 }
 
-// 判定処理などは変更なし
-function handleJudge(judge) {
-    // ... (既存のまま) ...
+
+function handleJudge(judge,timing) {
     const currentTime = state.audioCtx.currentTime - state.startTime;
     if (judge === 'MISS') {
         state.judgeCounts.miss++;
         state.combo = 0;
         state.lastJudge.color = '#888';
+        state.lastJudge.timing = '';
     } else {
         state.combo++;
         if (state.combo > state.maxCombo) state.maxCombo = state.combo;
@@ -243,13 +390,14 @@ function handleJudge(judge) {
             state.score += 100;
             state.lastJudge.color = '#ff8800';
         }
+        state.lastJudge.timing = timing;
     }
     state.lastJudge.text = judge;
     state.lastJudge.time = currentTime;
     if(uiScore) uiScore.innerText = state.score;
 }
 
-// エフェクト生成などは変更なし
+
 function createHitEffect(laneIdx) {
     const currentTime = state.audioCtx.currentTime - state.startTime;
     state.hitEffects.push({ lane: laneIdx, startTime: currentTime, duration: 0.3 });

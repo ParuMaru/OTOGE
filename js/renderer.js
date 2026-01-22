@@ -118,6 +118,18 @@ function drawJudgeUI(state) {
         ctx.shadowColor = 'black';
         ctx.shadowBlur = 10;
         ctx.fillText(state.lastJudge.text, 0, 0);
+        if (state.lastJudge.text !== 'MISS' && state.lastJudge.text !== 'PERFECT' && state.lastJudge.timing) {
+            ctx.font = 'bold 20px Arial'; // 少し小さめの文字
+            // 色分け: FASTは青、SLOWは赤 (好みで変えてください)
+            if (state.lastJudge.timing === 'FAST') {
+                ctx.fillStyle = '#00ccff'; // 水色
+            } else {
+                ctx.fillStyle = '#ff4444'; // 赤
+            }
+            
+            // 判定文字の下(Y+35px)に表示
+            ctx.fillText(state.lastJudge.timing, 0, -35);
+        }
         ctx.restore();
     }
 
@@ -138,9 +150,9 @@ function drawJudgeUI(state) {
     }
 }
 
+//爆発エフェクト
 function drawEffects(state) {
-    const currentSongTime = state.audioCtx.currentTime - state.startTime;
-    
+    const currentSongTime = state.audioCtx.currentTime - state.startTime;  
     state.hitEffects.forEach(effect => {
         const elapsed = currentSongTime - effect.startTime;
         const progress = elapsed / effect.duration;
