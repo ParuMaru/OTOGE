@@ -1,63 +1,55 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>JS Rhythm Game Prototype</title>
+<body>
+    <div id="scene-title" class="scene">
+        <h1>JS RHYTHM</h1>
+        <p>Click to Enter</p>
+    </div>
+
+    <div id="scene-select" class="scene" style="display: none;">
+        <h2>SELECT MUSIC</h2>
+        <div id="song-list"></div>
+    </div>
+
+    <div id="scene-game" class="scene" style="display: none;">
+        <div id="ui">
+            <div>SCORE: <span id="score">0</span></div>
+            <div>COMBO: <span id="combo">0</span></div>
+        </div>
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+    </div>
+
+    <div id="scene-result" class="scene" style="display: none;">
+        </div>
+
     <style>
-        body {
-            margin: 0;
-            background: #222;
-            color: white;
-            font-family: 'Courier New', sans-serif;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-        }
-        canvas {
-            background: #000;
-            border: 2px solid #555;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-        }
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            pointer-events: none;
-        }
-        #start-overlay {
+        /* 共通スタイル */
+        .scene {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
             display: flex;
-            justify-content: center;
-            align-items: center;
             flex-direction: column;
-            cursor: pointer;
-            z-index: 10;
+            align-items: center;
+            justify-content: center;
+            background: #222;
+            color: white;
         }
-        h1 { margin: 0 0 20px 0; color: cyan; text-shadow: 0 0 10px cyan; }
-        p { margin: 5px; }
+        /* 選曲ボタンのスタイル */
+        .song-btn {
+            background: #444; color: #fff;
+            border: 1px solid #0ff;
+            padding: 15px 30px; margin: 10px;
+            cursor: pointer; width: 300px;
+            text-align: left;
+            transition: 0.2s;
+        }
+        .song-btn:hover { background: #0ff; color: #000; }
+        .song-info { font-size: 0.8em; color: #ccc; }
+        .song-btn:hover .song-info { color: #333; }
+        
+        /* ゲーム画面はCanvasがあるので背景色指定なしでもOKだが念のため */
+        #scene-game { background: #000; pointer-events: none; }
+        #ui { pointer-events: none; position: absolute; top: 20px; left: 20px; z-index: 10; }
+        canvas { pointer-events: auto; background: #000; border: 2px solid #555; }
     </style>
-</head>
-<body>
 
-    <div id="ui">
-        <div>SCORE: <span id="score">0</span></div>
-        <div>COMBO: <span id="combo">0</span></div>
-        <div id="debug"></div>
-    </div>
-
-    <div id="start-overlay">
-        <h1>JS RHYTHM CORE</h1>
-        <p>Click to Start</p>
-        <p>Controls: [D] [F] [J] [K]</p>
-    </div>
-
-    <canvas id="gameCanvas" width="400" height="600"></canvas>
-
-    <script src="main.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
-</html>
