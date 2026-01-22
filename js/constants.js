@@ -1,6 +1,6 @@
 // 設定定数
 export const CONFIG = {
-    NOTE_SPEED: 900,
+    NOTE_SPEED: 1000,
     JUDGE_LINE_Y: 500,
     LANE_WIDTH: 80,
     LANE_COUNT: 4,
@@ -23,5 +23,14 @@ export const SONGS = [
         folder: 'tsuki_to_okami',
         offset: 0,
         bpm: 158,
-    }
+    },
+    {
+        id: 'burning_heart',
+        title: 'Burning Heart',
+        level: 'HARD',
+        folder: 'burning_heart',
+        offset: 0,
+        bpm: 142,
+    },
+    
 ];

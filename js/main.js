@@ -34,8 +34,8 @@ const state = {
     hitEffects: [],
     lastJudge: { text: '', time: -10, color: '#fff', timing: '' },
     judgeCounts: { perfect: 0, great: 0, bad: 0, miss: 0 },
+    speedMultiplier: 1.0,
     
-    isRecording: false, // 録音モードかどうか
     recordedNotes: [],  // 記録したノーツを貯めておく場所
 };
 
@@ -56,47 +56,81 @@ function toTitle() {
 }
 
 // 2. 選曲画面へ
+
 function toSelect() {
     state.isPlaying = false;
     stopMusic();
     switchScene('select');
     
-    songListContainer.innerHTML = '';
+    const container = document.getElementById('song-list');
+    container.innerHTML = ''; 
+
+    // --- ハイスピ設定UI ---
+    const settingDiv = document.createElement('div');
+    settingDiv.style.marginBottom = '20px';
+    settingDiv.style.padding = '10px';
+    settingDiv.style.border = '1px solid #555';
+    settingDiv.style.background = '#333';
+    settingDiv.style.textAlign = 'center';
+    
+    // ラベル更新用関数
+    const updateLabel = () => {
+        const mult = state.speedMultiplier || 1.0;
+        const actualSpeed = Math.round(CONFIG.NOTE_SPEED * mult);
+        speedLabel.innerText = `HI-SPEED: x${mult.toFixed(1)} (SPD:${actualSpeed})`;
+    };
+
+    // 現在のスピード表示
+    const speedLabel = document.createElement('span');
+    speedLabel.style.fontSize = '1.5rem';
+    speedLabel.style.margin = '0 20px';
+    speedLabel.style.fontFamily = 'monospace';
+    updateLabel(); 
+
+    // 減らすボタン
+    const minusBtn = document.createElement('button');
+    minusBtn.innerText = '◀ Slower';
+    minusBtn.className = 'song-btn'; 
+    minusBtn.style.width = 'auto';
+    minusBtn.style.padding = '5px 15px';
+    minusBtn.onclick = () => {
+        state.speedMultiplier = Math.max(0.5, (state.speedMultiplier || 1.0) - 0.1);
+        updateLabel();
+    };
+
+    // 増やすボタン
+    const plusBtn = document.createElement('button');
+    plusBtn.innerText = 'Faster ▶';
+    plusBtn.className = 'song-btn';
+    plusBtn.style.width = 'auto';
+    plusBtn.style.padding = '5px 15px';
+    plusBtn.onclick = () => {
+        state.speedMultiplier = Math.min(10.0, (state.speedMultiplier || 1.0) + 0.1);
+        updateLabel();
+    };
+
+    settingDiv.appendChild(minusBtn);
+    settingDiv.appendChild(speedLabel);
+    settingDiv.appendChild(plusBtn);
+    container.appendChild(settingDiv);
+
+
+    // --- 曲リスト表示  ---
     SONGS.forEach(song => {
-        // コンテナを作る
         const row = document.createElement('div');
         row.style.display = 'flex';
         row.style.alignItems = 'center';
         row.style.marginBottom = '10px';
 
-        // 1. 通常のプレイボタン
+        // プレイ開始ボタン
         const btn = document.createElement('div');
         btn.className = 'song-btn';
-        btn.style.margin = '0'; // レイアウト調整
-        btn.innerHTML = `
-            <div style="font-size: 1.2rem; font-weight: bold;">${song.title}</div>
-            <div class="song-info">LEVEL: ${song.level}</div>
-        `;
-        btn.onclick = () => startGame(song, false); // false = 通常プレイ
+        btn.style.width = '100%'; // 幅いっぱいに広げる
+        btn.innerHTML = `<div style="font-weight:bold;">${song.title}</div><div class="song-info">LV: ${song.level}</div>`;
+        btn.onclick = () => startGame(song, false);
         
-        // 2. ★追加: レコーディングボタン
-        const recBtn = document.createElement('button');
-        recBtn.innerText = 'REC';
-        recBtn.style.height = '100%';
-        recBtn.style.marginLeft = '10px';
-        recBtn.style.padding = '10px 20px';
-        recBtn.style.background = '#ff4444';
-        recBtn.style.color = 'white';
-        recBtn.style.border = 'none';
-        recBtn.style.cursor = 'pointer';
-        recBtn.style.fontWeight = 'bold';
-        
-        // クリックしたら「レコーディングモード」で開始
-        recBtn.onclick = () => startGame(song, true); // true = 録音モード
-
         row.appendChild(btn);
-        row.appendChild(recBtn);
-        songListContainer.appendChild(row);
+        container.appendChild(row);
     });
 }
 
@@ -131,15 +165,8 @@ async function startGame(songData, isRecMode = false) {
         state.hitEffects = [];
         state.lastJudge = { text: '', time: -10, color: '#fff', timing: '' };
         
-        if (state.isRecording) {
-            // レコーディング時は「白紙」からスタート
-            state.notes = []; 
-            state.recordedNotes = [];
-            console.log("🔴 RECORDING START! キーを叩いて譜面を作ってください");
-        } else {
-            // 通常時はJSONから読み込み
-            state.notes = chartData.notes.map(n => ({ ...n, hit: false, visible: true }));
-        }
+        state.notes = chartData.notes.map(n => ({ ...n, hit: false, visible: true }));
+
         // 音楽再生 & 同期
         state.isPlaying = true;
         playMusic(musicBuffer);
@@ -148,6 +175,13 @@ async function startGame(songData, isRecMode = false) {
         // 画面切り替え
         overlay.innerHTML = originalText;
         switchScene('game');
+        
+        if (uiScore) {
+            const mult = state.speedMultiplier || 1.0;
+            const actual = Math.round(CONFIG.NOTE_SPEED * mult);
+            // 2行で表示（1行目:SCORE, 2行目:スピード）
+            uiScore.innerHTML = `SCORE: 0<br><span style="font-size:0.7em; color:#aaa">SPD: ${actual} (x${mult.toFixed(1)})</span>`;
+        }
         
         //曲の長さ
         state.musicDuration = musicBuffer.duration;
@@ -394,7 +428,11 @@ function handleJudge(judge,timing) {
     }
     state.lastJudge.text = judge;
     state.lastJudge.time = currentTime;
-    if(uiScore) uiScore.innerText = state.score;
+    if (uiScore) {
+        const mult = state.speedMultiplier || 1.0;
+        const actual = Math.round(CONFIG.NOTE_SPEED * mult);
+        uiScore.innerHTML = `SCORE: ${state.score}<br><span style="font-size:0.7em; color:#aaa">SPD: ${actual} (x${mult.toFixed(1)})</span>`;
+    }
 }
 
 

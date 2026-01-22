@@ -80,7 +80,9 @@ function drawNotes(state) {
         if (!note.visible) return;
 
         const timeDiff = note.time - currentSongTime;
-        const y = CONFIG.JUDGE_LINE_Y - (timeDiff * CONFIG.NOTE_SPEED);
+        //設定無ければ1.0
+        const speed = CONFIG.NOTE_SPEED * (state.speedMultiplier || 1.0);
+        const y = CONFIG.JUDGE_LINE_Y - (timeDiff * speed);
 
         // 画面内のみ描画
         if (y > -50 && y < canvas.height + 50) {
@@ -97,13 +99,15 @@ function drawNotes(state) {
     });
 }
 
+// js/renderer.js の drawJudgeUI 関数
+
 function drawJudgeUI(state) {
     const currentSongTime = state.audioCtx.currentTime - state.startTime;
     const timeDiff = currentSongTime - state.lastJudge.time;
     const centerX = canvas.width / 2;
     const centerY = CONFIG.JUDGE_LINE_Y - 150; 
 
-    // 判定文字
+    // --- 1. 判定文字 (中央) ---
     if (timeDiff >= 0 && timeDiff < 0.5) {
         ctx.save();
         ctx.translate(centerX, centerY);
@@ -118,22 +122,22 @@ function drawJudgeUI(state) {
         ctx.shadowColor = 'black';
         ctx.shadowBlur = 10;
         ctx.fillText(state.lastJudge.text, 0, 0);
+        
+        // FAST/SLOW
         if (state.lastJudge.text !== 'MISS' && state.lastJudge.text !== 'PERFECT' && state.lastJudge.timing) {
-            ctx.font = 'bold 20px Arial'; // 少し小さめの文字
-            // 色分け: FASTは青、SLOWは赤 (好みで変えてください)
+            ctx.font = 'bold 20px Arial'; 
             if (state.lastJudge.timing === 'FAST') {
-                ctx.fillStyle = '#00ccff'; // 水色
+                ctx.fillStyle = '#00ccff'; 
             } else {
-                ctx.fillStyle = '#ff4444'; // 赤
+                ctx.fillStyle = '#ff4444'; 
             }
-            
-            // 判定文字の下(Y+35px)に表示
             ctx.fillText(state.lastJudge.timing, 0, -35);
         }
         ctx.restore();
     }
 
-    // コンボ
+    // --- 2. コンボ (中央・判定の下) ---
+    // ここは変更なし
     if (state.combo > 0) {
         ctx.save();
         ctx.translate(centerX, centerY + 40);
@@ -148,6 +152,7 @@ function drawJudgeUI(state) {
         ctx.fillText("COMBO", 0, 25);
         ctx.restore();
     }
+
 }
 
 //爆発エフェクト
