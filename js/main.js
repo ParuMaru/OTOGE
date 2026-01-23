@@ -268,6 +268,7 @@ async function startGame(songData, difficulty = 'Hard') {
     }
 }
 
+// 4. リザルト画面へ 
 // 4. リザルト画面へ (finishGame)
 function finishGame() {
     state.isPlaying = false;
@@ -282,10 +283,36 @@ function finishGame() {
     else if (state.score >= maxScore*0.7) rank = 'A';
     else if (state.score >= maxScore*0.6) rank = 'B';
 
+    // ★追加: フルコンボ・オールパーフェクト判定
+    // ノーツが1つ以上あり、かつMISSが0ならフルコンボ
+    const isFullCombo = state.judgeCounts.miss === 0 && totalNotes > 0;
+    // フルコンボかつ、GREATとBADも0ならオールパーフェクト
+    const isAllPerfect = isFullCombo && state.judgeCounts.great === 0 && state.judgeCounts.good === 0;
+
+    let specialMessage = '';
+    // アニメーション用のスタイル
+    const animStyle = `animation: blink 0.3s infinite alternate;`;
+
+    if (isAllPerfect) {
+        specialMessage = `<div style="color: #ffd700; font-size: 2.5rem; font-weight:bold; margin: 10px 0; text-shadow: 0 0 20px #ffd700; ${animStyle}">ALL PERFECT!!</div>`;
+    } else if (isFullCombo) {
+        specialMessage = `<div style="color: #00ffcc; font-size: 2.5rem; font-weight:bold; margin: 10px 0; text-shadow: 0 0 20px #00ffcc;">FULL COMBO!!</div>`;
+    }
+
+    // アニメーション定義をheadに追加（存在しなければ）
+    if (!document.getElementById('anim-style')) {
+        const style = document.createElement('style');
+        style.id = 'anim-style';
+        style.innerHTML = `@keyframes blink { from { opacity: 1; transform: scale(1); } to { opacity: 0.8; transform: scale(1.05); } }`;
+        document.head.appendChild(style);
+    }
+
     scenes.result.innerHTML = `
         <h1 style="color: #ff0055; margin-bottom: 10px;">FINISH!</h1>
         <h2 style="color: #fff">${state.selectedSong.title}</h2>
         
+        ${specialMessage}
+
         <div style="font-size: 3rem; color: cyan; font-weight: bold; text-shadow: 0 0 20px cyan;">
             RANK ${rank}
         </div>

@@ -1,0 +1,27 @@
+{
+  "bpm": 158.0,
+  "offset": -0.355011,
+  "bpmEvents": [
+    {
+      "time": 0.0,
+      "bpm": 158.0
+    }
+  ],
+  "Beginner": [
+    {
+      "time": 0.7595,
+      "lane": 1,
+      "duration": 0
+    },
+    {
+      "time": 1.1392,
+      "lane": 1,
+      "duration": 0
+    },
+    {
+      "time": 1.519,
+      "lane": 1,
+      "duration": 0
+    }
+  ]
+}

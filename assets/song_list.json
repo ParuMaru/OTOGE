@@ -1,5 +1,17 @@
 [
   {
+    "id": "AAAAA",
+    "folder": "AAAAA",
+    "title": "TEST",
+    "bpm": 158.0,
+    "offset": -0.355011,
+    "difficulties": [
+      "Beginner"
+    ],
+    "format": "mp3",
+    "audioFile": "AAAAA.mp3"
+  },
+  {
     "id": "Breakin' Chain",
     "folder": "Breakin' Chain",
     "title": "Breakin' Chain",
@@ -127,7 +139,7 @@
       "Edit"
     ],
     "format": "ogg",
-    "audioFile": "Re\u30fb\u54d8nd of a Dream.ogg"
+    "audioFile": "Re\uff1aEnd of a Dream.ogg"
   },
   {
     "id": "\u6708\u3068\u72fc",
@@ -140,6 +152,6 @@
       "Hard"
     ],
     "format": "mp3",
-    "audioFile": "\u8b5b\u533b\u2192\u8fe2\uff7c.mp3"
+    "audioFile": "\u6708\u3068\u72fc.mp3"
   }
 ]
