@@ -5,139 +5,175 @@ import os
 
 def parse_sm(file_path):
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
     except Exception as e:
         print(f"Error reading file: {e}")
-        return []
+        return {}
 
-    # --- 1. BPMを取得 ---
-    # 形式: #BPMS:0.000=158.000,...;
+    # --- 1. OFFSETの取得 ---
+    offset_match = re.search(r"#OFFSET:(-?\d+(\.\d+)?);", content)
+    sm_offset = float(offset_match.group(1)) if offset_match else 0.0
+
+    # --- 2. BPMとSTOPの解析 ---
+    # BPMイベント
     bpm_match = re.search(r'#BPMS:(.*?);', content, re.DOTALL)
-    if not bpm_match:
-        print("Error: BPM not found")
-        return []
+    bpms = [] 
+    if bpm_match:
+        for item in bpm_match.group(1).replace('\n', '').split(','):
+            if '=' in item:
+                b, v = item.split('=')
+                bpms.append((float(b), float(v)))
     
-    # 簡易対応: 最初のBPMだけを取得（変速なし前提）
-    first_bpm_str = bpm_match.group(1).split(',')[0].strip() # 例: 0.000=158.000
-    if '=' in first_bpm_str:
-        bpm = float(first_bpm_str.split('=')[1])
-    else:
-        bpm = 120.0 # フォールバック
-    
-    print(f"Detected BPM: {bpm}")
+    # STOPイベント
+    stop_match = re.search(r'#STOPS:(.*?);', content, re.DOTALL)
+    stops = [] 
+    if stop_match:
+        stop_str = stop_match.group(1).strip()
+        if stop_str:
+            for item in stop_str.replace('\n', '').split(','):
+                if '=' in item:
+                    b, v = item.split('=')
+                    stops.append((float(b), float(v)))
 
-    # --- 2. NOTESセクションを取得 ---
-    # 難易度ごとに分かれているので、"dance-single:" の後の数字の羅列を探す
-    # (複数ある場合は、一番ノーツ数が多いもの=HARDなどを簡易的に選ぶロジックにするか、最初に見つかったものを採用)
-    
-    # StepManiaのNOTES形式:
-    # #NOTES:
-    #      type:
-    #      desc:
-    #      difficulty:
-    #      meter:
-    #      radar:
-    #      NoteData;
-    
-    # 正規表現で NoteData 部分を抽出
-    notes_sections = re.findall(r'#NOTES:[\s\S]*?;', content)
-    
-    if not notes_sections:
-        print("Error: NOTES section not found")
-        return []
+    # 全イベントを統合
+    all_points = set([b[0] for b in bpms] + [s[0] for s in stops])
+    sorted_beats = sorted(list(all_points))
 
-    # とりあえず最後のセクション（通常は一番高難易度）を使用
-    target_section = notes_sections[-1]
+    bpm_events = []
     
-    # 最後のコロン(:)からセミコロン(;)までが譜面データ
-    raw_notes_data = target_section.split(':')[-1].strip().rstrip(';')
-    
-    measures = raw_notes_data.split(',')
-    parsed_notes = []
-    
-    # ホールド計算用: { レーン番号: 開始時間 }
-    active_holds = {} 
-
     current_time = 0.0
+    current_beat = 0.0
+    current_bpm = bpms[0][1] if bpms else 120.0
     
-    for measure in measures:
-        lines = measure.strip().split()
-        if not lines: continue
+    bpm_events.append({"time": 0.0, "bpm": current_bpm})
+
+    # ★修正点: 時間計算用のマップ
+    beat_time_map = [(0.0, 0.0)] 
+
+    for beat in sorted_beats:
+        if beat <= 0: continue 
+
+        # 時間を加算
+        beat_diff = beat - current_beat
+        time_diff = beat_diff * (60.0 / current_bpm)
+        current_time += time_diff
+        current_beat = beat
         
-        # この小節の分解能 (4行なら4分音符、16行なら16分音符)
-        divisions = len(lines)
-        # 1行あたりの時間(秒) = (60 / BPM * 4拍) / 行数
-        seconds_per_line = (240.0 / bpm) / divisions
+        # 停止「前」の時間を記録
+        beat_time_map.append((current_beat, current_time))
 
-        for line in lines:
-            # line は "0000" や "1002" など
-            # クォート除去などのクリーンアップ
-            line = line.strip()
+        # イベント処理
+        new_bpm = next((x[1] for x in bpms if abs(x[0] - beat) < 0.001), None)
+        if new_bpm is not None:
+            current_bpm = new_bpm
+            bpm_events.append({"time": round(current_time, 6), "bpm": current_bpm})
+
+        stop_len = next((x[1] for x in stops if abs(x[0] - beat) < 0.001), None)
+        if stop_len is not None:
+            # 停止開始
+            bpm_events.append({"time": round(current_time, 6), "bpm": 0})
             
-            # コメント対策（//以降は無視）
-            if '//' in line:
-                line = line.split('//')[0]
+            # 時間を進める
+            current_time += stop_len
+            
+            # 停止終了（再開）
+            bpm_events.append({"time": round(current_time, 6), "bpm": current_bpm})
+            
+            # ★重要: 停止「後」の時間も記録しておく（通過後のノーツ計算用）
+            beat_time_map.append((current_beat, current_time))
 
-            if len(line) < 4: continue
+    print(f"Processed {len(bpm_events)} timing events.")
 
-            for lane, char in enumerate(line):
-                # 0:なし, 1:通常, 2:ホールド開始, 3:ホールド終了, M:地雷
-                
-                if char == '1': # 通常ノーツ (Tap)
-                    parsed_notes.append({
-                        "time": round(current_time, 3),
-                        "lane": lane,
-                        "duration": 0
-                    })
-                    
-                elif char == '2': # ホールド開始 (Hold Head)
-                    active_holds[lane] = current_time
-                    
-                elif char == '3': # ホールド終了 (Hold Tail)
-                    if lane in active_holds:
-                        start_time = active_holds.pop(lane)
-                        duration = current_time - start_time
-                        
-                        # duration付きのノーツとして追加
-                        parsed_notes.append({
-                            "time": round(start_time, 3), # 開始時間を登録
-                            "lane": lane,
-                            "duration": round(duration, 3)
-                        })
+    # --- 3. ノーツの解析 ---
+    # ★ここが修正のキモ: Beatから時間を計算する関数
+    def get_time_at_beat(target_beat):
+        # 1. ジャストタイミング（停止位置）なら、停止「前」の時間を返す
+        # これがないと、停止後の時間（遅れた時間）が判定基準になってしまい、早押しミスになる
+        exact_matches = [t for b, t in beat_time_map if abs(b - target_beat) < 0.001]
+        if exact_matches:
+            return min(exact_matches) 
 
-            current_time += seconds_per_line
+        # 2. それ以外（補間）は、停止「後」の時間を基準にする
+        last_beat, last_time = beat_time_map[0]
+        for b, t in beat_time_map:
+            if b > target_beat: break
+            last_beat, last_time = b, t # 重複時は最後（停止後）をとる
+        
+        # その区間のBPMを探す
+        active_bpm = 120.0
+        for b, v in bpms:
+            if b <= last_beat + 0.001: active_bpm = v
+            else: break
+            
+        diff = target_beat - last_beat
+        return last_time + diff * (60.0 / active_bpm)
 
-    # 時間順にソート
-    parsed_notes.sort(key=lambda x: x['time'])
-    
-    return parsed_notes
+    raw_notes_sections = re.findall(r"#NOTES:(.*?);", content, re.DOTALL)
+    if not raw_notes_sections: return {}
+
+    charts_by_difficulty = {
+        "bpm": bpms[0][1] if bpms else 120.0,
+        "offset": sm_offset,
+        "bpmEvents": bpm_events 
+    }
+
+    for section in raw_notes_sections:
+        parts = section.strip().split(':')
+        if len(parts) < 6: continue
+        
+        difficulty_name = parts[2].strip()
+        note_data_str = parts[-1]
+        
+        parsed_notes = []
+        active_holds = {}
+        measures = note_data_str.strip().split(',')
+        curr_beat_cnt = 0.0
+
+        for measure in measures:
+            lines = measure.strip().split()
+            lines = [l for l in lines if not l.startswith('//') and len(l) >= 4]
+            if not lines: continue
+            
+            divisions = len(lines)
+            beats_per_line = 4.0 / divisions
+
+            for i, line in enumerate(lines):
+                note_beat = curr_beat_cnt + (i * beats_per_line)
+                note_time = get_time_at_beat(note_beat)
+
+                for lane, char in enumerate(line):
+                    if lane >= 4: break
+                    if char == '1' or char == 'M': 
+                        parsed_notes.append({"time": round(note_time, 4), "lane": lane, "duration": 0})
+                    elif char == '2': 
+                        active_holds[lane] = note_time
+                    elif char == '3': 
+                        if lane in active_holds:
+                            st = active_holds.pop(lane)
+                            # duration は差分で計算（停止時間を含んだ正しい長さになる）
+                            parsed_notes.append({
+                                "time": round(st, 4),
+                                "lane": lane,
+                                "duration": round(note_time - st, 4)
+                            })
+            curr_beat_cnt += 4.0
+        
+        parsed_notes.sort(key=lambda x: x['time'])
+        charts_by_difficulty[difficulty_name] = parsed_notes
+
+    return charts_by_difficulty
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: python sm_converter.py <chart.sm>")
-        print("Example: python sm_converter.py assets/songs/song1/chart.sm")
-        sys.exit(1)
-        
-    input_path = sys.argv[1]
+    target_file = sys.argv[1] if len(sys.argv) > 1 else "assets/songs/tsuki_to_okami/chart.sm"
     
-    # 出力パス: 入力と同じフォルダの chart.json
-    folder = os.path.dirname(input_path)
-    output_path = os.path.join(folder, 'chart.json')
-
-    print(f"Reading: {input_path}")
-    notes = parse_sm(input_path)
-    
-    if not notes:
-        print("No notes found or error occurred.")
+    if not os.path.exists(target_file):
+        print(f"File not found: {target_file}")
         sys.exit(1)
 
-    output_data = {
-        "notes": notes
-    }
-    
+    print(f"Converting: {target_file}")
+    charts = parse_sm(target_file)
+    output_path = target_file.replace(".sm", ".json")
     with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, indent=2)
-        
-    print(f"Success! Converted {len(notes)} notes.")
-    print(f"Saved to: {output_path}")
+        json.dump(charts, f, indent=2)
+    print(f"Done! Saved to {output_path}")

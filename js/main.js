@@ -1,6 +1,6 @@
 // js/main.js
 
-import { CONFIG, SONGS } from './constants.js'; 
+import { CONFIG, } from './constants.js'; 
 import { initAudio, playSound, loadAudio, playMusic, stopMusic } from './audio.js';
 import { initRenderer, renderGame } from './renderer.js';
 
@@ -13,6 +13,7 @@ const scenes = {
 };
 const songListContainer = document.getElementById('song-list');
 const uiScore = document.getElementById('score');
+let globalSongList = [];
 
 // ゲームの状態管理
 const state = {
@@ -36,6 +37,7 @@ const state = {
     judgeCounts: { perfect: 0, great: 0, bad: 0, miss: 0 },
     speedMultiplier: 1.0,
     keyState: [false, false, false, false],
+    greenNumber: 500, // 緑数字の初期値 (500msで落ちてくる)
 };
 
 // 初期化
@@ -47,15 +49,26 @@ initRenderer(canvas);
 // 1. タイトル画面へ
 function toTitle() {
     switchScene('title');
-    // 最初のクリックでAudioContextを作るため、クリックイベントを設定
+    
+    // タイトル画面でリストを読み込んでおく
+    fetch('assets/song_list.json')
+        .then(res => res.json())
+        .then(data => {
+            globalSongList = data;
+            console.log("Song list loaded:", globalSongList);
+        })
+        .catch(err => {
+            console.error("Song list load failed:", err);
+            // エラー時はconstants.jsのバックアップを使う等の処理も可
+        });
+
     scenes.title.onclick = () => {
-        state.audioCtx = initAudio(); // 音声エンジンの起動
+        state.audioCtx = initAudio(); 
         toSelect();
     };
 }
 
 // 2. 選曲画面へ
-
 function toSelect() {
     state.isPlaying = false;
     stopMusic();
@@ -64,7 +77,7 @@ function toSelect() {
     const container = document.getElementById('song-list');
     container.innerHTML = ''; 
 
-    // --- ハイスピ設定UI ---
+    // --- 緑数字設定UI ---
     const settingDiv = document.createElement('div');
     settingDiv.style.marginBottom = '20px';
     settingDiv.style.padding = '10px';
@@ -74,37 +87,36 @@ function toSelect() {
     
     // ラベル更新用関数
     const updateLabel = () => {
-        const mult = state.speedMultiplier || 1.0;
-        const actualSpeed = Math.round(CONFIG.NOTE_SPEED * mult);
-        speedLabel.innerText = `HI-SPEED: x${mult.toFixed(1)} (SPD:${actualSpeed})`;
+        // 緑数字を表示 (小さいほど速い)
+        speedLabel.innerText = `GREEN NUMBER: ${state.greenNumber}`;
+        speedLabel.style.color = '#0f0'; // 緑色にする演出
     };
 
-    // 現在のスピード表示
     const speedLabel = document.createElement('span');
     speedLabel.style.fontSize = '1.5rem';
     speedLabel.style.margin = '0 20px';
     speedLabel.style.fontFamily = 'monospace';
     updateLabel(); 
 
-    // 減らすボタン
+    // 減らすボタン (数値を減らす＝速くなる)
     const minusBtn = document.createElement('button');
-    minusBtn.innerText = '◀ Slower';
+    minusBtn.innerText = 'FAST ( -10 )'; 
     minusBtn.className = 'song-btn'; 
     minusBtn.style.width = 'auto';
     minusBtn.style.padding = '5px 15px';
     minusBtn.onclick = () => {
-        state.speedMultiplier = Math.max(0.5, (state.speedMultiplier || 1.0) - 0.1);
+        state.greenNumber = Math.max(100, state.greenNumber - 10);
         updateLabel();
     };
 
-    // 増やすボタン
+    // 増やすボタン (数値を増やす＝遅くなる)
     const plusBtn = document.createElement('button');
-    plusBtn.innerText = 'Faster ▶';
+    plusBtn.innerText = 'SLOW ( +10 )';
     plusBtn.className = 'song-btn';
     plusBtn.style.width = 'auto';
     plusBtn.style.padding = '5px 15px';
     plusBtn.onclick = () => {
-        state.speedMultiplier = Math.min(10.0, (state.speedMultiplier || 1.0) + 0.1);
+        state.greenNumber = Math.min(2000, state.greenNumber + 10);
         updateLabel();
     };
 
@@ -113,30 +125,53 @@ function toSelect() {
     settingDiv.appendChild(plusBtn);
     container.appendChild(settingDiv);
 
-
-    // --- 曲リスト表示  ---
-    SONGS.forEach(song => {
-        const row = document.createElement('div');
-        row.style.display = 'flex';
-        row.style.alignItems = 'center';
-        row.style.marginBottom = '10px';
-
-        // プレイ開始ボタン
-        const btn = document.createElement('div');
-        btn.className = 'song-btn';
-        btn.style.width = '100%'; // 幅いっぱいに広げる
-        btn.innerHTML = `<div style="font-weight:bold;">${song.title}</div><div class="song-info">LV: ${song.level}</div>`;
-        btn.onclick = () => startGame(song, false);
+    // --- 曲リスト表示 ---
+    globalSongList.forEach(song => {
+        // 曲ごとの枠を作る
+        const songRow = document.createElement('div');
+        songRow.className = 'song-row';
+        songRow.style.marginBottom = '20px';
+        songRow.style.border = '1px solid #555';
+        songRow.style.padding = '10px';
         
-        row.appendChild(btn);
-        container.appendChild(row);
+        // 曲タイトル
+        const titleDiv = document.createElement('div');
+        titleDiv.innerText = song.title;
+        titleDiv.style.fontWeight = 'bold';
+        titleDiv.style.marginBottom = '10px';
+        titleDiv.style.fontSize = '1.2rem';
+        songRow.appendChild(titleDiv);
+
+        // 難易度ボタンを並べるコンテナ
+        const btnContainer = document.createElement('div');
+        btnContainer.className = 'difficulty-container';
+        btnContainer.style.display = 'flex';
+        btnContainer.style.gap = '10px';
+        
+        // difficulties配列をループしてボタンを作る
+        const diffs = song.difficulties || ['Hard'];
+
+        diffs.forEach(diffName => {
+            const btn = document.createElement('button');
+            btn.className = 'song-btn';
+            btn.style.width = 'auto'; // 幅を自動調整
+            btn.style.flex = '1';     // 横に均等に並べる
+            btn.innerText = diffName; 
+            
+            // クリック時、難易度名も渡す
+            btn.onclick = () => startGame(song, diffName);
+            
+            btnContainer.appendChild(btn);
+        });
+
+        songRow.appendChild(btnContainer);
+        container.appendChild(songRow);
     });
 }
 
 // 3. ゲーム画面へ (startGame)
-async function startGame(songData, isRecMode = false) {
+async function startGame(songData, difficulty = 'Hard') {
     state.selectedSong = songData; // 選んだ曲を保存
-    state.isRecording = isRecMode;
     
     const overlay = document.getElementById('scene-select');
     const originalText = overlay.innerHTML;
@@ -145,18 +180,68 @@ async function startGame(songData, isRecMode = false) {
     try {
         // パスの構築
         const base = `${CONFIG.SONG_BASE_PATH}${songData.folder}/`;
-        const musicUrl = base + 'music.mp3';
-        const chartUrl = base + 'chart.json';
+        const ext = songData.format || 'mp3';
+        const musicUrl = base + `${songData.folder}.${ext}`;
+        const chartUrl = base + `${songData.folder}.json`;
 
-        // ★重要: 音楽と譜面を「並列」で読み込む (待ち時間が短縮される)
+        // 音楽と譜面を並列読み込み
         const [musicBuffer, chartData] = await Promise.all([
-            loadAudio(musicUrl),            // 音楽のロード
-            fetch(chartUrl).then(res => res.json()) // JSONのロードとパース
+            loadAudio(musicUrl),
+            fetch(chartUrl).then(res => res.json()) 
         ]);
+        
+        // --- 1. ソフラン・停止用の事前計算 ---
+        if (chartData.bpmEvents) {
+            let accumulatedY = 0;
+            for (let i = 0; i < chartData.bpmEvents.length; i++) {
+                const evt = chartData.bpmEvents[i];
+                const nextEvt = chartData.bpmEvents[i + 1];
 
-        // --- 読み込み完了後の処理 ---
-    
-    // 状態リセット
+                evt.y = accumulatedY;
+
+                if (nextEvt) {
+                    const duration = nextEvt.time - evt.time;
+                    accumulatedY += duration * evt.bpm;
+                }
+            }
+            state.bpmEvents = chartData.bpmEvents;
+        } else {
+            // データがない場合のフォールバック
+            state.bpmEvents = [{ time: 0, bpm: state.currentBpm || 150, y: 0 }];
+        }
+
+        // --- 2. 譜面データの取得 ---
+        let targetNotes = chartData[difficulty];
+        // もし指定した難易度が無かったら、最初のやつを使う
+        if (!targetNotes) {
+            console.warn(`Difficulty ${difficulty} not found. Using first available.`);
+            targetNotes = Object.values(chartData)[0];
+        }
+
+        // --- 3. データのセットアップ ---
+        const songBpm = chartData.bpm || songData.bpm;
+        const songOffset = (chartData.offset !== undefined) ? chartData.offset : (songData.offset || 0);
+        state.currentBpm = songBpm;
+        
+        // ★MAX BPMの探索（ソフラン対応）
+        let maxBpm = songData.bpm || 150; // 初期値
+        if (chartData.bpmEvents && chartData.bpmEvents.length > 0) {
+            chartData.bpmEvents.forEach(evt => {
+                if (evt.bpm > maxBpm) maxBpm = evt.bpm;
+            });
+        }
+
+        // ★緑数字からハイスピ倍率を逆算
+        const baseScale = 4.0; // renderer.jsの描画係数
+        const judgeY = CONFIG.JUDGE_LINE_Y; 
+        const targetBpm = maxBpm > 0 ? maxBpm : 150;
+        
+        // 倍率決定
+        state.speedMultiplier = (judgeY * 1000) / (state.greenNumber * targetBpm * baseScale);
+
+        console.log(`MaxBPM: ${maxBpm}, GreenNum: ${state.greenNumber} => Multiplier: x${state.speedMultiplier.toFixed(2)}`);
+        
+        // 状態リセット
         state.score = 0;
         state.combo = 0;
         state.maxCombo = 0;
@@ -164,12 +249,12 @@ async function startGame(songData, isRecMode = false) {
         state.hitEffects = [];
         state.lastJudge = { text: '', time: -10, color: '#fff', timing: '' };
         
-        state.notes = chartData.notes.map(n => ({ ...n, hit: false, visible: true }));
+        state.notes = targetNotes.map(n => ({ ...n, hit: false, visible: true }));
 
         // 音楽再生 & 同期
         state.isPlaying = true;
         playMusic(musicBuffer);
-        state.startTime = state.audioCtx.currentTime - (songData.offset || 0);
+        state.startTime = state.audioCtx.currentTime - songOffset;
 
         // 画面切り替え
         overlay.innerHTML = originalText;
@@ -178,18 +263,16 @@ async function startGame(songData, isRecMode = false) {
         if (uiScore) {
             const mult = state.speedMultiplier || 1.0;
             const actual = Math.round(CONFIG.NOTE_SPEED * mult);
-            // 2行で表示（1行目:SCORE, 2行目:スピード）
             uiScore.innerHTML = `SCORE: 0<br><span style="font-size:0.7em; color:#aaa">SPD: ${actual} (x${mult.toFixed(1)})</span>`;
         }
         
-        //曲の長さ
         state.musicDuration = musicBuffer.duration;
         
         requestAnimationFrame(gameLoop);
 
     } catch (error) {
         console.error("ロードエラー:", error);
-        alert("データの読み込みに失敗しました。\nassetsフォルダの構成を確認してください。");
+        alert("データの読み込みに失敗しました。\nassetsフォルダの構成や、chart.jsonを確認してください。");
         overlay.innerHTML = originalText;
     }
 }
@@ -197,29 +280,9 @@ async function startGame(songData, isRecMode = false) {
 // 4. リザルト画面へ (finishGame)
 function finishGame() {
     state.isPlaying = false;
-    // レコーディング結果の出力
-    if (state.isRecording) {
-        // 時間順にソート（念のため）
-        state.recordedNotes.sort((a, b) => a.time - b.time);
-
-        // JSON形式にする
-        const jsonOutput = JSON.stringify({ notes: state.recordedNotes }, null, 2);
-        
-        console.log("▼▼▼▼▼ 下のデータを chart.json にコピペしてください ▼▼▼▼▼");
-        console.log(jsonOutput);
-        console.log("▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲");
-        
-        alert("コンソール(F12)にJSONデータを出力しました！\nこれを chart.json に上書きしてください。");
-        
-        // リザルト画面に行かずに選曲へ戻る
-        toSelect(); 
-        return;
-    }
-    
     switchScene('result');
 
     // ランク計算
-    
     const totalNotes = state.notes.length; 
     const maxScore = totalNotes * 1000; //理論値
     
@@ -265,27 +328,24 @@ function finishGame() {
 
 // ユーティリティ: シーンの表示切り替え
 function switchScene(sceneName) {
-    // 全部のシーンを非表示にする
     Object.values(scenes).forEach(el => el.style.display = 'none');
-    // 指定されたシーンだけ表示する
-    scenes[sceneName].style.display = 'flex'; // flexboxレイアウトを使用しているため
+    scenes[sceneName].style.display = 'flex';
 }
 
 
-// --- 既存のゲームループ・入力処理 (一部変更あり) ---
+// --- ゲームループ・入力処理 ---
 
-// 入力処理
+// キーを押したとき
 window.addEventListener('keydown', e => {
-    if (!state.isPlaying || e.repeat) return; // e.repeatで押しっぱなし連打を防ぐ
+    if (!state.isPlaying || e.repeat) return; 
     
     const keyIndex = CONFIG.KEYS.indexOf(e.key.toLowerCase());
     if (keyIndex === -1) return;
 
     state.laneLights[keyIndex] = 0.3;
-    state.keyState[keyIndex] = true; // ★キー押下状態をON
+    state.keyState[keyIndex] = true;
 
     const currentSongTime = state.audioCtx.currentTime - state.startTime;
-
 
     // 判定対象を探す
     const targetNote = state.notes
@@ -297,23 +357,16 @@ window.addEventListener('keydown', e => {
         const diff = Math.abs(rawDiff);
 
         if (diff <= CONFIG.JUDGE_WINDOW.BAD) {
-            // ★ロングノーツ分岐
+            // ロングノーツ分岐
             if (targetNote.duration > 0) {
-                // ホールド開始！
                 targetNote.isHolding = true; 
-                // まだ hit = true にしない（消さない）
-                
-                // 最初の判定を表示
                 let judge = 'BAD';
                 if (diff <= CONFIG.JUDGE_WINDOW.PERFECT) judge = 'PERFECT';
                 else if (diff <= CONFIG.JUDGE_WINDOW.GREAT) judge = 'GREAT';
                 handleJudge(judge, rawDiff > 0 ? 'FAST' : 'SLOW');
-                
                 playSound('hit');
                 createHitEffect(keyIndex);
-
             } else {
-                // 通常ノーツの処理 (既存のまま)
                 targetNote.hit = true;
                 targetNote.visible = false;
                 let judge = 'BAD';
@@ -327,73 +380,73 @@ window.addEventListener('keydown', e => {
     }
 });
 
-// ★追加: キーを離したとき
+// キーを離したとき
 window.addEventListener('keyup', e => {
     const keyIndex = CONFIG.KEYS.indexOf(e.key.toLowerCase());
     if (keyIndex === -1) return;
     
-    state.keyState[keyIndex] = false; // キー押下状態をOFF
+    state.keyState[keyIndex] = false;
 
     // ホールド中に離してしまったノーツを探す
     const holdingNote = state.notes.find(n => n.lane === keyIndex && n.isHolding && !n.hit);
     if (holdingNote) {
-        // まだ終わっていないのに離した = MISS
         const currentSongTime = state.audioCtx.currentTime - state.startTime;
         const endTime = holdingNote.time + holdingNote.duration;
         
-        // 許容誤差 (0.1秒くらい早めに離してもOKにする優しさ)
+        // 許容誤差 (0.1秒くらい早めに離してもOKにする)
         if (currentSongTime < endTime - 0.1) {
             holdingNote.isHolding = false;
-            holdingNote.visible = false; // 消す
-            holdingNote.hit = true;      // 処理済みにする
-            handleJudge('MISS');         // コンボ切る
+            holdingNote.visible = false; 
+            holdingNote.hit = true;      
+            handleJudge('MISS');         
         }
     }
 });
 
 function gameLoop() {
-    if (!state.isPlaying) return; // 停止中はループを止める
+    if (!state.isPlaying) return;
 
     const currentSongTime = state.audioCtx.currentTime - state.startTime;
 
-    // ... (既存のロジック: 光フェードアウト, エフェクト更新, MISS判定) ...
+    // レーン発光の減衰
     for (let i = 0; i < CONFIG.LANE_COUNT; i++) {
         if (state.laneLights[i] > 0) state.laneLights[i] = Math.max(0, state.laneLights[i] - 0.05);
     }
+    // エフェクト終了判定
     state.hitEffects = state.hitEffects.filter(effect => {
         return (currentSongTime - effect.startTime) < effect.duration;
     });
+    
+    // ノーツ処理
     state.notes.forEach(note => {
         if (!note.visible) return;
+        // 通り過ぎた判定
         if (!note.isHolding && note.time - currentSongTime < -CONFIG.JUDGE_WINDOW.BAD && !note.hit) {
             note.visible = false;
             handleJudge('MISS');
         }
         
+        // ホールド処理
         if (note.isHolding) {
             const endTime = note.time + (note.duration || 0);
-            
-            // 終了時間を超えたらクリア！
             if (currentSongTime >= endTime) {
                 note.isHolding = false;
-                note.hit = true;      // 完了
-                note.visible = false; // 消す
-                
-                handleJudge('PERFECT'); // 完走ボーナス！
-                playSound('hit');       // 完了音
+                note.hit = true;      
+                note.visible = false; 
+                handleJudge('PERFECT'); 
+                playSound('hit');       
                 createHitEffect(note.lane);
             }
-            
-            state.laneLights[note.lane] = 0.3; // レーンを光らせ続ける
+            state.laneLights[note.lane] = 0.2; 
         }
     });
 
     renderGame(state);
 
     // 終了判定
-
     if (state.notes.length > 0) {
         const lastNoteTime = state.notes[state.notes.length - 1].time;
+        // 最後のノーツから2秒経過で終了
         if (currentSongTime > lastNoteTime + 2.0) {
             finishGame();
             return;
@@ -445,11 +498,5 @@ function createHitEffect(laneIdx) {
     state.hitEffects.push({ lane: laneIdx, startTime: currentTime, duration: 0.3 });
 }
 
-function scheduleMetronome() {
-    if (!state.isPlaying) return;
-    if (Math.random() < 0.1) playSound('bgm_beat'); 
-    setTimeout(scheduleMetronome, 200);
-}
-
-// ★アプリケーション開始
+// アプリケーション開始
 toTitle();

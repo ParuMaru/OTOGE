@@ -1,26 +1,12 @@
-<body>
-    <div id="scene-title" class="scene">
-        <h1>JS RHYTHM</h1>
-        <p>Click to Enter</p>
-    </div>
-
-    <div id="scene-select" class="scene" style="display: none;">
-        <h2>SELECT MUSIC</h2>
-        <div id="song-list"></div>
-    </div>
-
-    <div id="scene-game" class="scene" style="display: none;">
-        <div id="ui">
-            <div>SCORE: <span id="score">0</span></div>
-        </div>
-        <canvas id="gameCanvas" width="400" height="600"></canvas>
-    </div>
-
-    <div id="scene-result" class="scene" style="display: none;">
-        </div>
-
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Rhythm Game</title>
     <style>
-        /* 共通スタイル */
+        body { margin: 0; overflow: hidden; background: #111; font-family: 'Arial', sans-serif; }
+        
+        /* 共通シーンスタイル */
         .scene {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -30,24 +16,134 @@
             justify-content: center;
             background: #222;
             color: white;
+            box-sizing: border-box; /* パディングを含める */
         }
-        /* 選曲ボタンのスタイル */
+
+        /* ゲーム画面のみ背景を黒にする */
+        #scene-game { 
+            background: #000; 
+            pointer-events: none; /* UI以外はクリックを通さない */
+        }
+
+        /* --- 選曲画面のリストエリア (スクロール対応) --- */
+        #song-list {
+            width: 600px;        /* 幅を広く */
+            max-height: 70vh;    /* 画面の70%を超えたらスクロール */
+            overflow-y: auto;    /* 縦スクロール有効 */
+            
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            border: 1px solid #444;
+            
+            /* 中身を中央揃えにするための設定 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* スクロールバーのデザイン */
+        #song-list::-webkit-scrollbar {
+            width: 12px;
+        }
+        #song-list::-webkit-scrollbar-track {
+            background: #333; 
+            border-radius: 6px;
+        }
+        #song-list::-webkit-scrollbar-thumb {
+            background: #0ff; 
+            border-radius: 6px;
+        }
+
+        /* 選曲ボタン */
         .song-btn {
+            /* width: 95%;  ← これは削除するか、上書きされるので無視でOK */
+            flex: 1;            /* 均等に割り付け */
+            min-width: 0;       /* 文字が長くても崩れないように */
+            
             background: #444; color: #fff;
             border: 1px solid #0ff;
-            padding: 15px 30px; margin: 10px;
-            cursor: pointer; width: 300px;
-            text-align: left;
+            padding: 10px 0;    /* 上下だけパディング、左右は自動 */
+            cursor: pointer; 
+            font-size: 1rem;
+            text-align: center;
             transition: 0.2s;
+            border-radius: 4px;
         }
-        .song-btn:hover { background: #0ff; color: #000; }
-        .song-info { font-size: 0.8em; color: #ccc; }
-        .song-btn:hover .song-info { color: #333; }
+        .song-btn:hover { 
+            background: #0ff; 
+            color: #000; 
+        }
         
-        #scene-game { background: #000; pointer-events: none; }
-        #ui { pointer-events: none; position: absolute; top: 20px; left: 20px; z-index: 10; }
-        canvas { pointer-events: auto; background: #000; border: 2px solid #555; }
+        /* ゲーム中のスコア表示 */
+        #ui { 
+            pointer-events: none; 
+            position: absolute; 
+            top: 20px; left: 20px; 
+            z-index: 10; 
+            font-size: 24px; 
+            color: white; 
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        /* ゲームキャンバス */
+        canvas { 
+            pointer-events: auto; 
+            background: #000; 
+            border-left: 2px solid #555;
+            border-right: 2px solid #555;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+
+        /* タイトルなどの文字装飾 */
+        h1 { font-size: 4rem; margin-bottom: 20px; color: #0ff; text-shadow: 0 0 10px #0ff; }
+        h2 { margin-top: 0; color: #ccc; }
+        
+        .song-row {
+            width: 95%;          /* リストの幅いっぱいに広げる */
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #555;
+            padding: 10px;
+            margin-bottom: 10px; /* 曲同士の間隔 */
+            border-radius: 5px;
+            box-sizing: border-box; /* パディングを含めて幅計算 */
+        }
+
+        /* 難易度ボタンのコンテナ */
+        .difficulty-container {
+            display: flex;
+            gap: 10px;           /* ボタン同士の隙間 */
+            width: 100%;         /* 親の幅いっぱいに */
+        }
+        
+        
+
     </style>
+</head>
+<body>
+
+    <div id="scene-title" class="scene">
+        <h1>音ゲーだよ</h1>
+        <p>CLICK TO START</p>
+    </div>
+
+    <div id="scene-select" class="scene" style="display: none;">
+        <h2 style="margin-bottom: 20px;">SELECT MUSIC</h2>
+        <div id="song-list"></div>
+    </div>
+
+    <div id="scene-game" class="scene" style="display: none;">
+        <div id="ui">
+            <div id="score">SCORE: 0</div>
+        </div>
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+    </div>
+
+    <div id="scene-result" class="scene" style="display: none;">
+        </div>
 
     <script type="module" src="js/main.js"></script>
+
 </body>
+</html>

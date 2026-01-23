@@ -14,23 +14,3 @@ export const CONFIG = {
     SONG_BASE_PATH: 'assets/songs/'
 };
 
-//譜面データ
-export const SONGS = [
-    {
-        id: 'tsuki_to_okami',
-        title: '月と狼',
-        level: 'HARD',
-        folder: 'tsuki_to_okami',
-        offset: 0,
-        bpm: 158,
-    },
-    {
-        id: 'burning_heart',
-        title: 'Burning Heart',
-        level: 'HARD',
-        folder: 'burning_heart',
-        offset: 0,
-        bpm: 142,
-    },
-    
-];

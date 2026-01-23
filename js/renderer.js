@@ -52,7 +52,7 @@ function drawField(state) {
     for (let i = 0; i < CONFIG.LANE_COUNT; i++) {
         if (state.laneLights[i] > 0) {
             const x = getLaneX(i);
-            ctx.fillStyle = `rgba(255, 255, 255, ${state.laneLights[i] * 0.2})`;
+            ctx.fillStyle = `rgba(255, 255, 255, ${state.laneLights[i] * 0.4})`;
             ctx.fillRect(x, 0, CONFIG.LANE_WIDTH, canvas.height);
             
             // グラデーション
@@ -76,78 +76,69 @@ function drawField(state) {
 
 function drawNotes(state) {
     const currentSongTime = state.audioCtx.currentTime - state.startTime;
-    const speed = CONFIG.NOTE_SPEED * (state.speedMultiplier || 1.0);
+    
+    //  現在の「距離」を取得
+    const currentY = getYPosition(currentSongTime, state);
+    
+    //  倍率調整 
+    const speedScale = (state.speedMultiplier || 1.0) * 4.0;
 
     state.notes.forEach(note => {
-        // 処理済み(hit=true) かつ ホールド中でないなら描画しない
         if (note.hit && !note.isHolding) return;
 
-        const duration = note.duration || 0;
-        const x = getLaneX(note.lane);
-        const w = CONFIG.LANE_WIDTH;
-        const h = 20; // ノーツの高さ
+        //  ノーツの「距離」を取得して、現在位置との差分をとる
+        const noteY = getYPosition(note.time, state);
+        const relativeY = (noteY - currentY) * speedScale;
 
-        // --- 1. 座標計算 (ここで yTail を定義します) ---
+        // 画面上のY座標に変換
+        let yHead = CONFIG.JUDGE_LINE_Y - relativeY;
         
-        // 始点（頭）の位置
-        let yHead = CONFIG.JUDGE_LINE_Y - ((note.time - currentSongTime) * speed);
-        
-        // 終点（お尻）の位置を定義
+        // ロングノーツの処理
         let yTail = yHead; 
-        if (duration > 0) {
-            // ロングノーツなら、終点の時間は time + duration
-            yTail = CONFIG.JUDGE_LINE_Y - ((note.time + duration - currentSongTime) * speed);
+        if (note.duration > 0) {
+            const endY = getYPosition(note.time + note.duration, state);
+            const relativeEndY = (endY - currentY) * speedScale;
+            yTail = CONFIG.JUDGE_LINE_Y - relativeEndY;
         }
 
-        // --- 2. ホールド中の表示調整 ---
-        // 押している最中は、頭を判定ラインに固定して「吸い付いている」ように見せる
+        // ホールド中の吸い付き処理
         if (note.isHolding) {
             yHead = CONFIG.JUDGE_LINE_Y;
         }
 
-        // --- 3. 描画実行 ---
+        // --- 以下、描画処理（変更なし） ---
+        const x = getLaneX(note.lane);
+        const w = CONFIG.LANE_WIDTH;
+        const h = 20;
 
-        // A. ロングノーツの描画（帯 ＋ 終点）
-        if (duration > 0) {
-            // 画面内に入っているかチェック
+        // ロングノーツ描画
+        if (note.duration > 0) {
             if (yHead > -100 && yTail < canvas.height) {
-                
-                // A-1. 帯（ボディ）の描画
-                // yTail(上) から yHead(下) までの長さを塗る
                 const bodyHeight = yHead - yTail;
                 if (bodyHeight > 0) {
-                    ctx.fillStyle = 'rgba(0, 255, 0, 0.5)'; // 緑色の帯
+                    ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
                     ctx.fillRect(x + 10, yTail, w - 20, bodyHeight);
                 }
-
-                // A-2. 終点ノーツの描画
                 if (yTail > -50 && yTail < canvas.height + 50) {
-                    ctx.fillStyle = '#00aa00'; // 少し濃い緑
+                    ctx.fillStyle = '#00aa00';
                     ctx.fillRect(x + 2, yTail - h/2, w - 4, h);
-                    
-                    ctx.strokeStyle = '#fff'; // 白枠
+                    ctx.strokeStyle = '#fff';
                     ctx.lineWidth = 2;
                     ctx.strokeRect(x + 2, yTail - h/2, w - 4, h);
                 }
             }
         }
 
-        // B. 始点ノーツの描画
-        // 通常ノーツ または ロングの頭
+        // 通常ノーツ描画
         if (yHead > -50 && yHead < canvas.height + 50) {
-            // 色分け: ロングは緑、通常は赤
-            ctx.fillStyle = duration > 0 ? '#00cc00' : '#ff0055';
-            
+            ctx.fillStyle = note.duration > 0 ? '#00cc00' : '#ff0055';
             ctx.fillRect(x + 2, yHead - h/2, w - 4, h);
-            
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
             ctx.strokeRect(x + 2, yHead - h/2, w - 4, h);
         }
     });
 }
-
-// js/renderer.js の drawJudgeUI 関数
 
 function drawJudgeUI(state) {
     const currentSongTime = state.audioCtx.currentTime - state.startTime;
@@ -226,4 +217,19 @@ function drawEffects(state) {
         ctx.strokeRect(-size/3, -size/3, size*2/3, size*2/3);
         ctx.restore();
     });
+}
+
+function getYPosition(time, state) {
+    const events = state.bpmEvents;
+    // 現在時間に対応するイベントを探す
+    let currentEvt = events[0];
+    for (let i = events.length - 1; i >= 0; i--) {
+        if (time >= events[i].time) {
+            currentEvt = events[i];
+            break;
+        }
+    }
+    const timeSinceEvent = time - currentEvt.time;
+    // 停止中(bpm:0)なら、ここで距離が増えないので止まって見えるはず
+    return currentEvt.y + (timeSinceEvent * currentEvt.bpm);
 }
