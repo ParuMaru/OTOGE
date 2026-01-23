@@ -2,9 +2,19 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Web Rhythm Game</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #111; font-family: 'Arial', sans-serif; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #111; 
+            font-family: 'Arial', sans-serif;
+            /* ★追加: ダブルタップ拡大やスクロール等の標準動作を無効化 */
+            touch-action: none; 
+            user-select: none;
+            -webkit-user-select: none; /* Safari用 */
+        }
         
         /* 共通シーンスタイル */
         .scene {
@@ -16,66 +26,57 @@
             justify-content: center;
             background: #222;
             color: white;
-            box-sizing: border-box; /* パディングを含める */
+            box-sizing: border-box;
         }
 
         /* ゲーム画面のみ背景を黒にする */
         #scene-game { 
             background: #000; 
-            pointer-events: none; /* UI以外はクリックを通さない */
+            pointer-events: none; 
         }
 
-        /* --- 選曲画面のリストエリア (スクロール対応) --- */
+        /* --- 選曲画面のリストエリア --- */
         #song-list {
-            width: 600px;        /* 幅を広く */
-            max-height: 70vh;    /* 画面の70%を超えたらスクロール */
-            overflow-y: auto;    /* 縦スクロール有効 */
-            
+            width: 600px;
+            max-height: 70vh;
+            overflow-y: auto;
             padding: 10px;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 10px;
             border: 1px solid #444;
-            
-            /* 中身を中央揃えにするための設定 */
             display: flex;
             flex-direction: column;
             align-items: center;
+            /* ★追加: スマホでのスクロール操作性を向上 */
+            -webkit-overflow-scrolling: touch; 
         }
 
         /* スクロールバーのデザイン */
-        #song-list::-webkit-scrollbar {
-            width: 12px;
-        }
-        #song-list::-webkit-scrollbar-track {
-            background: #333; 
-            border-radius: 6px;
-        }
-        #song-list::-webkit-scrollbar-thumb {
-            background: #0ff; 
-            border-radius: 6px;
-        }
+        #song-list::-webkit-scrollbar { width: 12px; }
+        #song-list::-webkit-scrollbar-track { background: #333; border-radius: 6px; }
+        #song-list::-webkit-scrollbar-thumb { background: #0ff; border-radius: 6px; }
 
         /* 選曲ボタン */
         .song-btn {
-            /* width: 95%;  ← これは削除するか、上書きされるので無視でOK */
-            flex: 1;            /* 均等に割り付け */
-            min-width: 0;       /* 文字が長くても崩れないように */
-            
+            flex: 1;
+            min-width: 0;
             background: #444; color: #fff;
             border: 1px solid #0ff;
-            padding: 10px 0;    /* 上下だけパディング、左右は自動 */
+            padding: 10px 0;
             cursor: pointer; 
             font-size: 1rem;
             text-align: center;
             transition: 0.2s;
             border-radius: 4px;
+            /* ★追加: タップ時のハイライト色を消す */
+            -webkit-tap-highlight-color: transparent; 
         }
-        .song-btn:hover { 
-            background: #0ff; 
-            color: #000; 
-        }
+        .song-btn:hover { background: #0ff; color: #000; }
         
-        /* ゲーム中のスコア表示 */
+        .song-btn:active {
+            background: #0cc; /* スマホ用に押した感を追加 */
+        }
+
         #ui { 
             pointer-events: none; 
             position: absolute; 
@@ -94,42 +95,103 @@
             border-left: 2px solid #555;
             border-right: 2px solid #555;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            /* ★変更: デフォルトは固定サイズだが、最大幅を制限 */
+            max-width: 100%;
+            max-height: 100%;
         }
 
-        /* タイトルなどの文字装飾 */
         h1 { font-size: 4rem; margin-bottom: 20px; color: #0ff; text-shadow: 0 0 10px #0ff; }
         h2 { margin-top: 0; color: #ccc; }
         
         .song-row {
-            width: 95%;          /* リストの幅いっぱいに広げる */
+            width: 95%;
             background: rgba(0,0,0,0.5);
             border: 1px solid #555;
             padding: 10px;
-            margin-bottom: 10px; /* 曲同士の間隔 */
+            margin-bottom: 10px;
             border-radius: 5px;
-            box-sizing: border-box; /* パディングを含めて幅計算 */
+            box-sizing: border-box;
         }
 
-        /* 難易度ボタンのコンテナ */
         .difficulty-container {
             display: flex;
-            gap: 10px;           /* ボタン同士の隙間 */
-            width: 100%;         /* 親の幅いっぱいに */
+            gap: 10px;
+            width: 100%;
         }
         
-        
+        /* 設定パネルのデザイン */
+    #setting-panel {
+        width: 600px;
+        max-width: 95%; /* スマホ対応 */
+        background: #333;
+        border: 1px solid #555;
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 15px; /* リストとの間隔 */
+        text-align: center;
+        box-sizing: border-box;
+    }
 
+    /* 設定ボタンの並び用 */
+    .setting-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 5px;
+        flex-wrap: wrap; /* 画面が狭いときは折り返す */
+        margin-top: 5px;
+    }
+
+    /* 設定用ボタンの個別スタイル */
+    .setting-btn {
+        background: #444; 
+        color: #fff;
+        border: 1px solid #888;
+        padding: 5px 10px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        min-width: 60px; /* 押しやすい幅 */
+    }
+    .setting-btn:active { background: #666; }
+    
+    /* FAST/SLOWの色分け */
+    .btn-fast { border-color: #00ccff; color: #00ccff; }
+    .btn-slow { border-color: #ff4444; color: #ff4444; }
+
+        /* ★追加: スマホ用レスポンシブ設定 */
+        @media (max-width: 600px) {
+            h1 { font-size: 2.5rem; }
+            
+            #song-list {
+                width: 95%; /* 画面幅いっぱいに */
+            }
+            
+            /* キャンバスを画面にフィットさせる */
+            canvas {
+                width: 100%;     /* 幅いっぱい */
+                height: auto;    /* アスペクト比維持 */
+                max-height: 90vh; /* 高さがあふれないように */
+                object-fit: contain;
+            }
+            
+            /* ボタンを押しやすく少し大きく */
+            .song-btn {
+                padding: 15px 0; 
+            }
+        }
     </style>
 </head>
 <body>
-
     <div id="scene-title" class="scene">
         <h1>音ゲーだよ</h1>
-        <p>CLICK TO START</p>
+        <p>CLICK / TAP TO START</p>
     </div>
 
     <div id="scene-select" class="scene" style="display: none;">
-        <h2 style="margin-bottom: 20px;">SELECT MUSIC</h2>
+        <h2 style="margin-bottom: 10px;">SELECT MUSIC</h2>
+        
+        <div id="setting-panel"></div>
+
         <div id="song-list"></div>
     </div>
 
@@ -141,9 +203,8 @@
     </div>
 
     <div id="scene-result" class="scene" style="display: none;">
-        </div>
+    </div>
 
     <script type="module" src="js/main.js"></script>
-
 </body>
 </html>

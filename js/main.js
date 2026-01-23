@@ -34,7 +34,7 @@ const state = {
     laneLights: [0, 0, 0, 0],
     hitEffects: [],
     lastJudge: { text: '', time: -10, color: '#fff', timing: '' },
-    judgeCounts: { perfect: 0, great: 0, bad: 0, miss: 0 },
+    judgeCounts: { perfect: 0, great: 0, good: 0, miss: 0 },
     speedMultiplier: 1.0,
     keyState: [false, false, false, false],
     greenNumber: 500, // 緑数字の初期値 (500msで落ちてくる)
@@ -74,65 +74,64 @@ function toSelect() {
     stopMusic();
     switchScene('select');
     
-    const container = document.getElementById('song-list');
-    container.innerHTML = ''; 
+    // --- 1. 設定パネルの描画 ---
+    const settingPanel = document.getElementById('setting-panel');
+    settingPanel.innerHTML = ''; // クリア
 
-    // --- 緑数字設定UI ---
-    const settingDiv = document.createElement('div');
-    settingDiv.style.marginBottom = '20px';
-    settingDiv.style.padding = '10px';
-    settingDiv.style.border = '1px solid #555';
-    settingDiv.style.background = '#333';
-    settingDiv.style.textAlign = 'center';
+    // 現在の数値を表示するエリア
+    const labelContainer = document.createElement('div');
+    labelContainer.style.marginBottom = '10px';
     
-    // ラベル更新用関数
-    const updateLabel = () => {
-        // 緑数字を表示 (小さいほど速い)
-        speedLabel.innerText = `GREEN NUMBER: ${state.greenNumber}`;
-        speedLabel.style.color = '#0f0'; // 緑色にする演出
-    };
-
     const speedLabel = document.createElement('span');
     speedLabel.style.fontSize = '1.5rem';
-    speedLabel.style.margin = '0 20px';
     speedLabel.style.fontFamily = 'monospace';
-    updateLabel(); 
+    speedLabel.style.fontWeight = 'bold';
+    
+    const updateLabel = () => {
+        // 緑数字を表示 (小さいほど速い)
+        speedLabel.innerHTML = `SPEED: <span style="color:#0f0">${state.greenNumber}</span>`;
+    };
+    updateLabel();
+    labelContainer.appendChild(speedLabel);
+    settingPanel.appendChild(labelContainer);
 
-    // 減らすボタン (数値を減らす＝速くなる)
-    const minusBtn = document.createElement('button');
-    minusBtn.innerText = 'FAST ( -10 )'; 
-    minusBtn.className = 'song-btn'; 
-    minusBtn.style.width = 'auto';
-    minusBtn.style.padding = '5px 15px';
-    minusBtn.onclick = () => {
-        state.greenNumber = Math.max(100, state.greenNumber - 10);
-        updateLabel();
+    // ボタンエリア
+    const btnContainer = document.createElement('div');
+    btnContainer.className = 'setting-buttons';
+
+    // ボタン生成ヘルパー
+    const createBtn = (text, changeVal, className) => {
+        const btn = document.createElement('button');
+        btn.innerHTML = text; // 改行タグなどが使えるようにinnerHTML
+        btn.className = `setting-btn ${className}`;
+        btn.onclick = () => {
+            // 範囲制限 (例: 100 ~ 2000)
+            const newVal = state.greenNumber + changeVal;
+            state.greenNumber = Math.max(100, Math.min(2000, newVal));
+            updateLabel();
+        };
+        return btn;
     };
 
-    // 増やすボタン (数値を増やす＝遅くなる)
-    const plusBtn = document.createElement('button');
-    plusBtn.innerText = 'SLOW ( +10 )';
-    plusBtn.className = 'song-btn';
-    plusBtn.style.width = 'auto';
-    plusBtn.style.padding = '5px 15px';
-    plusBtn.onclick = () => {
-        state.greenNumber = Math.min(2000, state.greenNumber + 10);
-        updateLabel();
-    };
+    // FAST (数値が減る)
+    btnContainer.appendChild(createBtn('<< -100', -100, 'btn-fast'));
+    btnContainer.appendChild(createBtn('< -10', -10, 'btn-fast'));
+    
+    // SLOW (数値が増える)
+    btnContainer.appendChild(createBtn('+10 >', 10, 'btn-slow'));
+    btnContainer.appendChild(createBtn('+100 >>', 100, 'btn-slow'));
 
-    settingDiv.appendChild(minusBtn);
-    settingDiv.appendChild(speedLabel);
-    settingDiv.appendChild(plusBtn);
-    container.appendChild(settingDiv);
+    settingPanel.appendChild(btnContainer);
 
-    // --- 曲リスト表示 ---
+
+    // --- 2. 曲リストの描画 ---
+    const listContainer = document.getElementById('song-list');
+    listContainer.innerHTML = ''; 
+
     globalSongList.forEach(song => {
-        // 曲ごとの枠を作る
+        // 曲ごとの枠
         const songRow = document.createElement('div');
         songRow.className = 'song-row';
-        songRow.style.marginBottom = '20px';
-        songRow.style.border = '1px solid #555';
-        songRow.style.padding = '10px';
         
         // 曲タイトル
         const titleDiv = document.createElement('div');
@@ -142,30 +141,22 @@ function toSelect() {
         titleDiv.style.fontSize = '1.2rem';
         songRow.appendChild(titleDiv);
 
-        // 難易度ボタンを並べるコンテナ
-        const btnContainer = document.createElement('div');
-        btnContainer.className = 'difficulty-container';
-        btnContainer.style.display = 'flex';
-        btnContainer.style.gap = '10px';
+        // 難易度ボタンコンテナ
+        const diffContainer = document.createElement('div');
+        diffContainer.className = 'difficulty-container';
         
-        // difficulties配列をループしてボタンを作る
         const diffs = song.difficulties || ['Hard'];
-
         diffs.forEach(diffName => {
             const btn = document.createElement('button');
             btn.className = 'song-btn';
-            btn.style.width = 'auto'; // 幅を自動調整
-            btn.style.flex = '1';     // 横に均等に並べる
+            btn.style.flex = '1';
             btn.innerText = diffName; 
-            
-            // クリック時、難易度名も渡す
             btn.onclick = () => startGame(song, diffName);
-            
-            btnContainer.appendChild(btn);
+            diffContainer.appendChild(btn);
         });
 
-        songRow.appendChild(btnContainer);
-        container.appendChild(songRow);
+        songRow.appendChild(diffContainer);
+        listContainer.appendChild(songRow);
     });
 }
 
@@ -245,7 +236,7 @@ async function startGame(songData, difficulty = 'Hard') {
         state.score = 0;
         state.combo = 0;
         state.maxCombo = 0;
-        state.judgeCounts = { perfect: 0, great: 0, bad: 0, miss: 0 };
+        state.judgeCounts = { perfect: 0, great: 0, good: 0, miss: 0 };
         state.hitEffects = [];
         state.lastJudge = { text: '', time: -10, color: '#fff', timing: '' };
         
@@ -311,7 +302,7 @@ function finishGame() {
         ">
             <div style="color: #ffd700">PERFECT</div><div style="text-align: right">${state.judgeCounts.perfect}</div>
             <div style="color: #00ffff">GREAT</div><div style="text-align: right">${state.judgeCounts.great}</div>
-            <div style="color: #ff8800">BAD</div><div style="text-align: right">${state.judgeCounts.bad}</div>
+            <div style="color: #ff8800">BAD</div><div style="text-align: right">${state.judgeCounts.good}</div>
             <div style="color: #888">MISS</div><div style="text-align: right">${state.judgeCounts.miss}</div>
         </div>
 
@@ -335,21 +326,21 @@ function switchScene(sceneName) {
 
 // --- ゲームループ・入力処理 ---
 
-// キーを押したとき
-window.addEventListener('keydown', e => {
-    if (!state.isPlaying || e.repeat) return; 
+// レーンが押されたときの処理 (キー/タッチ共通)
+function handleLaneDown(laneIndex) {
+    if (!state.isPlaying || laneIndex < 0 || laneIndex >= CONFIG.LANE_COUNT) return;
     
-    const keyIndex = CONFIG.KEYS.indexOf(e.key.toLowerCase());
-    if (keyIndex === -1) return;
+    // 既に押されている場合は無視（キー長押し対策、タッチ重複対策）
+    if (state.keyState[laneIndex]) return;
 
-    state.laneLights[keyIndex] = 0.3;
-    state.keyState[keyIndex] = true;
+    state.laneLights[laneIndex] = 0.3;
+    state.keyState[laneIndex] = true;
 
     const currentSongTime = state.audioCtx.currentTime - state.startTime;
 
     // 判定対象を探す
     const targetNote = state.notes
-        .filter(n => n.lane === keyIndex && !n.hit && n.visible)
+        .filter(n => n.lane === laneIndex && !n.hit && n.visible)
         .sort((a, b) => a.time - b.time)[0];
 
     if (targetNote) {
@@ -365,7 +356,7 @@ window.addEventListener('keydown', e => {
                 else if (diff <= CONFIG.JUDGE_WINDOW.GREAT) judge = 'GREAT';
                 handleJudge(judge, rawDiff > 0 ? 'FAST' : 'SLOW');
                 playSound('hit');
-                createHitEffect(keyIndex);
+                createHitEffect(laneIndex);
             } else {
                 targetNote.hit = true;
                 targetNote.visible = false;
@@ -374,21 +365,20 @@ window.addEventListener('keydown', e => {
                 else if (diff <= CONFIG.JUDGE_WINDOW.GREAT) judge = 'GREAT';
                 handleJudge(judge, rawDiff > 0 ? 'FAST' : 'SLOW');
                 playSound('hit');
-                createHitEffect(keyIndex);
+                createHitEffect(laneIndex);
             }
         }
     }
-});
+}
 
-// キーを離したとき
-window.addEventListener('keyup', e => {
-    const keyIndex = CONFIG.KEYS.indexOf(e.key.toLowerCase());
-    if (keyIndex === -1) return;
+// レーンが離されたときの処理 (キー/タッチ共通)
+function handleLaneUp(laneIndex) {
+    if (laneIndex < 0 || laneIndex >= CONFIG.LANE_COUNT) return;
     
-    state.keyState[keyIndex] = false;
+    state.keyState[laneIndex] = false;
 
     // ホールド中に離してしまったノーツを探す
-    const holdingNote = state.notes.find(n => n.lane === keyIndex && n.isHolding && !n.hit);
+    const holdingNote = state.notes.find(n => n.lane === laneIndex && n.isHolding && !n.hit);
     if (holdingNote) {
         const currentSongTime = state.audioCtx.currentTime - state.startTime;
         const endTime = holdingNote.time + holdingNote.duration;
@@ -401,7 +391,89 @@ window.addEventListener('keyup', e => {
             handleJudge('MISS');         
         }
     }
+}
+
+// --- キーボードイベント ---
+
+window.addEventListener('keydown', e => {
+    if (!state.isPlaying || e.repeat) return; 
+    const keyIndex = CONFIG.KEYS.indexOf(e.key.toLowerCase());
+    if (keyIndex !== -1) handleLaneDown(keyIndex);
 });
+
+window.addEventListener('keyup', e => {
+    const keyIndex = CONFIG.KEYS.indexOf(e.key.toLowerCase());
+    if (keyIndex !== -1) handleLaneUp(keyIndex);
+});
+
+
+// --- ★追加: タッチイベントの設定（ループの外に定義） ---
+
+// 指のID管理用オブジェクト
+const touchMap = {};
+
+function setupTouchEvents() {
+    const canvas = document.getElementById('gameCanvas');
+
+    // タッチ座標をレーンインデックスに変換するヘルパー
+    const getLaneFromTouch = (touch) => {
+        const rect = canvas.getBoundingClientRect();
+        
+        // Canvas内の相対座標 (0.0 ~ 1.0) を計算
+        const relativeX = (touch.clientX - rect.left) / rect.width;
+        
+        // Canvasの内部幅に対するレーン領域
+        const totalLaneWidth = CONFIG.LANE_WIDTH * CONFIG.LANE_COUNT; 
+        const startX = (canvas.width - totalLaneWidth) / 2; 
+        
+        // タッチ位置をCanvas内部解像度(400px幅)に変換
+        const canvasX = relativeX * canvas.width;
+        
+        // レーン判定
+        if (canvasX >= startX && canvasX < startX + totalLaneWidth) {
+            const laneIndex = Math.floor((canvasX - startX) / CONFIG.LANE_WIDTH);
+            return laneIndex;
+        }
+        return -1; // 範囲外
+    };
+
+    // タッチ開始
+    canvas.addEventListener('touchstart', e => {
+        e.preventDefault(); // スクロール等のデフォルト動作を無効化
+        
+        // マルチタッチ対応のため changedTouches をループ
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const touch = e.changedTouches[i];
+            const lane = getLaneFromTouch(touch);
+            if (lane !== -1) {
+                // 指IDとレーンを紐付けて管理（離した時のため）
+                touchMap[touch.identifier] = lane;
+                handleLaneDown(lane);
+            }
+        }
+    }, { passive: false });
+
+    // タッチ終了・キャンセル
+    const handleEnd = (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const touch = e.changedTouches[i];
+            const lane = touchMap[touch.identifier];
+            if (lane !== undefined) {
+                handleLaneUp(lane);
+                delete touchMap[touch.identifier];
+            }
+        }
+    };
+    canvas.addEventListener('touchend', handleEnd, { passive: false });
+    canvas.addEventListener('touchcancel', handleEnd, { passive: false });
+}
+
+// 初期化フローの中でタッチイベントもセットアップする
+setupTouchEvents();
+
+
+// --- ゲームループ ---
 
 function gameLoop() {
     if (!state.isPlaying) return;
@@ -477,7 +549,7 @@ function handleJudge(judge,timing) {
             state.score += 500;
             state.lastJudge.color = '#00ffff';
         } else if (judge === 'BAD') {
-            state.judgeCounts.bad++;
+            state.judgeCounts.good++;
             state.score += 100;
             state.lastJudge.color = '#ff8800';
         }

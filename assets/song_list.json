@@ -127,7 +127,7 @@
       "Edit"
     ],
     "format": "ogg",
-    "audioFile": "Re\uff1aEnd of a Dream.ogg"
+    "audioFile": "Re\u30fb\u54d8nd of a Dream.ogg"
   },
   {
     "id": "\u6708\u3068\u72fc",
@@ -140,6 +140,6 @@
       "Hard"
     ],
     "format": "mp3",
-    "audioFile": "\u6708\u3068\u72fc.mp3"
+    "audioFile": "\u8b5b\u533b\u2192\u8fe2\uff7c.mp3"
   }
 ]
