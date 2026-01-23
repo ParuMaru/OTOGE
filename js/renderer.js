@@ -52,7 +52,7 @@ function drawField(state) {
     for (let i = 0; i < CONFIG.LANE_COUNT; i++) {
         if (state.laneLights[i] > 0) {
             const x = getLaneX(i);
-            ctx.fillStyle = `rgba(255, 255, 255, ${state.laneLights[i] * 0.5})`;
+            ctx.fillStyle = `rgba(255, 255, 255, ${state.laneLights[i] * 0.2})`;
             ctx.fillRect(x, 0, CONFIG.LANE_WIDTH, canvas.height);
             
             // グラデーション
@@ -73,28 +73,76 @@ function drawField(state) {
     });
 }
 
+
 function drawNotes(state) {
     const currentSongTime = state.audioCtx.currentTime - state.startTime;
+    const speed = CONFIG.NOTE_SPEED * (state.speedMultiplier || 1.0);
 
     state.notes.forEach(note => {
-        if (!note.visible) return;
+        // 処理済み(hit=true) かつ ホールド中でないなら描画しない
+        if (note.hit && !note.isHolding) return;
 
-        const timeDiff = note.time - currentSongTime;
-        //設定無ければ1.0
-        const speed = CONFIG.NOTE_SPEED * (state.speedMultiplier || 1.0);
-        const y = CONFIG.JUDGE_LINE_Y - (timeDiff * speed);
+        const duration = note.duration || 0;
+        const x = getLaneX(note.lane);
+        const w = CONFIG.LANE_WIDTH;
+        const h = 20; // ノーツの高さ
 
-        // 画面内のみ描画
-        if (y > -50 && y < canvas.height + 50) {
-            const x = getLaneX(note.lane);
-            const w = CONFIG.LANE_WIDTH;
-            const h = 20;
+        // --- 1. 座標計算 (ここで yTail を定義します) ---
+        
+        // 始点（頭）の位置
+        let yHead = CONFIG.JUDGE_LINE_Y - ((note.time - currentSongTime) * speed);
+        
+        // 終点（お尻）の位置を定義
+        let yTail = yHead; 
+        if (duration > 0) {
+            // ロングノーツなら、終点の時間は time + duration
+            yTail = CONFIG.JUDGE_LINE_Y - ((note.time + duration - currentSongTime) * speed);
+        }
 
-            ctx.fillStyle = '#ff0055';
-            ctx.fillRect(x + 2, y - h/2, w - 4, h);
-            ctx.strokeStyle = '#ff99aa';
+        // --- 2. ホールド中の表示調整 ---
+        // 押している最中は、頭を判定ラインに固定して「吸い付いている」ように見せる
+        if (note.isHolding) {
+            yHead = CONFIG.JUDGE_LINE_Y;
+        }
+
+        // --- 3. 描画実行 ---
+
+        // A. ロングノーツの描画（帯 ＋ 終点）
+        if (duration > 0) {
+            // 画面内に入っているかチェック
+            if (yHead > -100 && yTail < canvas.height) {
+                
+                // A-1. 帯（ボディ）の描画
+                // yTail(上) から yHead(下) までの長さを塗る
+                const bodyHeight = yHead - yTail;
+                if (bodyHeight > 0) {
+                    ctx.fillStyle = 'rgba(0, 255, 0, 0.5)'; // 緑色の帯
+                    ctx.fillRect(x + 10, yTail, w - 20, bodyHeight);
+                }
+
+                // A-2. 終点ノーツの描画
+                if (yTail > -50 && yTail < canvas.height + 50) {
+                    ctx.fillStyle = '#00aa00'; // 少し濃い緑
+                    ctx.fillRect(x + 2, yTail - h/2, w - 4, h);
+                    
+                    ctx.strokeStyle = '#fff'; // 白枠
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x + 2, yTail - h/2, w - 4, h);
+                }
+            }
+        }
+
+        // B. 始点ノーツの描画
+        // 通常ノーツ または ロングの頭
+        if (yHead > -50 && yHead < canvas.height + 50) {
+            // 色分け: ロングは緑、通常は赤
+            ctx.fillStyle = duration > 0 ? '#00cc00' : '#ff0055';
+            
+            ctx.fillRect(x + 2, yHead - h/2, w - 4, h);
+            
+            ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
-            ctx.strokeRect(x + 2, y - h/2, w - 4, h);
+            ctx.strokeRect(x + 2, yHead - h/2, w - 4, h);
         }
     });
 }
@@ -164,7 +212,7 @@ function drawEffects(state) {
         const x = getLaneX(effect.lane) + CONFIG.LANE_WIDTH / 2;
         const y = CONFIG.JUDGE_LINE_Y;
         const size = 40 + progress * 80; 
-        const alpha = 1.0 - progress;
+        const alpha = (1.0 - progress) * 0.6;
 
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';

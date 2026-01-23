@@ -35,8 +35,7 @@ const state = {
     lastJudge: { text: '', time: -10, color: '#fff', timing: '' },
     judgeCounts: { perfect: 0, great: 0, bad: 0, miss: 0 },
     speedMultiplier: 1.0,
-    
-    recordedNotes: [],  // 記録したノーツを貯めておく場所
+    keyState: [false, false, false, false],
 };
 
 // 初期化
@@ -277,82 +276,77 @@ function switchScene(sceneName) {
 
 // 入力処理
 window.addEventListener('keydown', e => {
-    if (!state.isPlaying) return; // ゲーム中以外は反応しない
+    if (!state.isPlaying || e.repeat) return; // e.repeatで押しっぱなし連打を防ぐ
     
     const keyIndex = CONFIG.KEYS.indexOf(e.key.toLowerCase());
     if (keyIndex === -1) return;
 
-    state.laneLights[keyIndex] = 1.0;
+    state.laneLights[keyIndex] = 0.3;
+    state.keyState[keyIndex] = true; // ★キー押下状態をON
 
     const currentSongTime = state.audioCtx.currentTime - state.startTime;
-    
-    // ★ レコーディングモードの処理（クオンタイズ版）
-    if (state.isRecording) {
-        // 1. 曲のBPMを取得 (未設定ならデフォルト120)
-        const bpm = state.selectedSong.bpm || 120;
-        
-        // 2. 「1拍(4分音符)の長さ」と「16分音符の長さ」を計算
-        // 例: BPM 60なら、1拍は1秒。16分音符はその1/4で0.25秒。
-        const beatDuration = 60 / bpm; 
-        const note16Duration = beatDuration / 4; 
 
-        // 3. 現在時刻 (オフセット考慮)
-        // ※システム遅延補正(CORRECTION)は、クオンタイズする場合は基本的に不要か、
-        //  あるいは「早めに叩きがち」な癖がある場合のみ微調整で入れます。
-        //  今回は「完全にグリッドに合わせる」ので、生の時刻を使います。
-        const rawTime = currentSongTime;
 
-        // 4. クオンタイズ計算（最も近い16分音符の場所に丸める）
-        // Math.round( 現在時間 / 16分音符の間隔 ) * 16分音符の間隔
-        let quantizedTime = Math.round(rawTime / note16Duration) * note16Duration;
-
-        // 小数点第3位に丸める（JSONを綺麗にするため）
-        const time = Math.round(quantizedTime * 1000) / 1000;
-        
-        // マイナスの時間は除外
-        if (time >= 0) {
-            // 重複防止: 全く同じ時間に同じレーンのノーツがあったら追加しない
-            const isDuplicate = state.recordedNotes.some(n => n.time === time && n.lane === keyIndex);
-            
-            if (!isDuplicate) {
-                state.recordedNotes.push({ time: time, lane: keyIndex });
-                console.log(`BPM${bpm} 16分補正: Raw=${rawTime.toFixed(3)} -> Fix=${time}`);
-
-                // 画面表示用
-                state.notes.push({
-                    time: time,
-                    lane: keyIndex,
-                    hit: false,
-                    visible: true
-                });
-                
-                playSound('hit');
-                createHitEffect(keyIndex);
-            }
-        }
-        return; 
-    }
-    
+    // 判定対象を探す
     const targetNote = state.notes
         .filter(n => n.lane === keyIndex && !n.hit && n.visible)
         .sort((a, b) => a.time - b.time)[0];
 
     if (targetNote) {
-        // ノーツの時間(未来) -今の時間
-        // プラスなら「まだ来てないのに押した」＝ FAST
-        // マイナスなら「通り過ぎてから押した」＝ SLOW
         const rawDiff = targetNote.time - currentSongTime;
-        const diff = Math.abs(rawDiff); // 判定用には絶対値を使う
+        const diff = Math.abs(rawDiff);
+
         if (diff <= CONFIG.JUDGE_WINDOW.BAD) {
-            targetNote.hit = true;
-            targetNote.visible = false;
-            let judge = 'BAD';
-            if (diff <= CONFIG.JUDGE_WINDOW.PERFECT) judge = 'PERFECT';
-            else if (diff <= CONFIG.JUDGE_WINDOW.GREAT) judge = 'GREAT';
-            const timing = rawDiff > 0 ? 'FAST' : 'SLOW';
-            handleJudge(judge,timing);
-            playSound('hit');
-            createHitEffect(keyIndex);
+            // ★ロングノーツ分岐
+            if (targetNote.duration > 0) {
+                // ホールド開始！
+                targetNote.isHolding = true; 
+                // まだ hit = true にしない（消さない）
+                
+                // 最初の判定を表示
+                let judge = 'BAD';
+                if (diff <= CONFIG.JUDGE_WINDOW.PERFECT) judge = 'PERFECT';
+                else if (diff <= CONFIG.JUDGE_WINDOW.GREAT) judge = 'GREAT';
+                handleJudge(judge, rawDiff > 0 ? 'FAST' : 'SLOW');
+                
+                playSound('hit');
+                createHitEffect(keyIndex);
+
+            } else {
+                // 通常ノーツの処理 (既存のまま)
+                targetNote.hit = true;
+                targetNote.visible = false;
+                let judge = 'BAD';
+                if (diff <= CONFIG.JUDGE_WINDOW.PERFECT) judge = 'PERFECT';
+                else if (diff <= CONFIG.JUDGE_WINDOW.GREAT) judge = 'GREAT';
+                handleJudge(judge, rawDiff > 0 ? 'FAST' : 'SLOW');
+                playSound('hit');
+                createHitEffect(keyIndex);
+            }
+        }
+    }
+});
+
+// ★追加: キーを離したとき
+window.addEventListener('keyup', e => {
+    const keyIndex = CONFIG.KEYS.indexOf(e.key.toLowerCase());
+    if (keyIndex === -1) return;
+    
+    state.keyState[keyIndex] = false; // キー押下状態をOFF
+
+    // ホールド中に離してしまったノーツを探す
+    const holdingNote = state.notes.find(n => n.lane === keyIndex && n.isHolding && !n.hit);
+    if (holdingNote) {
+        // まだ終わっていないのに離した = MISS
+        const currentSongTime = state.audioCtx.currentTime - state.startTime;
+        const endTime = holdingNote.time + holdingNote.duration;
+        
+        // 許容誤差 (0.1秒くらい早めに離してもOKにする優しさ)
+        if (currentSongTime < endTime - 0.1) {
+            holdingNote.isHolding = false;
+            holdingNote.visible = false; // 消す
+            holdingNote.hit = true;      // 処理済みにする
+            handleJudge('MISS');         // コンボ切る
         }
     }
 });
@@ -371,31 +365,41 @@ function gameLoop() {
     });
     state.notes.forEach(note => {
         if (!note.visible) return;
-        if (note.time - currentSongTime < -CONFIG.JUDGE_WINDOW.BAD && !note.hit) {
+        if (!note.isHolding && note.time - currentSongTime < -CONFIG.JUDGE_WINDOW.BAD && !note.hit) {
             note.visible = false;
             handleJudge('MISS');
+        }
+        
+        if (note.isHolding) {
+            const endTime = note.time + (note.duration || 0);
+            
+            // 終了時間を超えたらクリア！
+            if (currentSongTime >= endTime) {
+                note.isHolding = false;
+                note.hit = true;      // 完了
+                note.visible = false; // 消す
+                
+                handleJudge('PERFECT'); // 完走ボーナス！
+                playSound('hit');       // 完了音
+                createHitEffect(note.lane);
+            }
+            
+            state.laneLights[note.lane] = 0.3; // レーンを光らせ続ける
         }
     });
 
     renderGame(state);
 
     // 終了判定
-    if (state.isRecording) {
-        // ★レコーディング時: 曲の長さ + 2秒で終了
-        if (currentSongTime > state.musicDuration + 2.0) {
+
+    if (state.notes.length > 0) {
+        const lastNoteTime = state.notes[state.notes.length - 1].time;
+        if (currentSongTime > lastNoteTime + 2.0) {
             finishGame();
             return;
         }
-    } else {
-        // ★通常プレイ時: 最後のノーツ + 2秒で終了 (既存のロジック)
-        if (state.notes.length > 0) {
-            const lastNoteTime = state.notes[state.notes.length - 1].time;
-            if (currentSongTime > lastNoteTime + 2.0) {
-                finishGame();
-                return;
-            }
-        }
     }
+
     requestAnimationFrame(gameLoop);
 }
 
@@ -410,7 +414,7 @@ function handleJudge(judge,timing) {
     } else {
         state.combo++;
         if (state.combo > state.maxCombo) state.maxCombo = state.combo;
-
+        
         if (judge === 'PERFECT') {
             state.judgeCounts.perfect++;
             state.score += 1000;

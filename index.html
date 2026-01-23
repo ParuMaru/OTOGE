@@ -12,7 +12,6 @@
     <div id="scene-game" class="scene" style="display: none;">
         <div id="ui">
             <div>SCORE: <span id="score">0</span></div>
-            <div>COMBO: <span id="combo">0</span></div>
         </div>
         <canvas id="gameCanvas" width="400" height="600"></canvas>
     </div>
@@ -45,7 +44,6 @@
         .song-info { font-size: 0.8em; color: #ccc; }
         .song-btn:hover .song-info { color: #333; }
         
-        /* ゲーム画面はCanvasがあるので背景色指定なしでもOKだが念のため */
         #scene-game { background: #000; pointer-events: none; }
         #ui { pointer-events: none; position: absolute; top: 20px; left: 20px; z-index: 10; }
         canvas { pointer-events: auto; background: #000; border: 2px solid #555; }
