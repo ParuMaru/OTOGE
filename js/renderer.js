@@ -1,3 +1,5 @@
+// js/renderer.js
+
 import { CONFIG } from './constants.js';
 
 let canvas = null;
@@ -25,7 +27,7 @@ export function renderGame(state) {
     drawField(state);
     drawJudgeUI(state);
     drawNotes(state);
-    drawEffects(state); // 追加実装済みのエフェクト描画
+    drawEffects(state); 
 }
 
 function drawField(state) {
@@ -75,7 +77,8 @@ function drawField(state) {
 
 
 function drawNotes(state) {
-    const currentSongTime = state.audioCtx.currentTime - state.startTime;
+    // ★変更: オフセットを考慮した現在時間
+    const currentSongTime = (state.audioCtx.currentTime - state.startTime) - (state.globalOffset || 0);
     
     //  現在の「距離」を取得
     const currentY = getYPosition(currentSongTime, state);
@@ -141,7 +144,9 @@ function drawNotes(state) {
 }
 
 function drawJudgeUI(state) {
-    const currentSongTime = state.audioCtx.currentTime - state.startTime;
+    // ★変更: オフセット考慮
+    const currentSongTime = (state.audioCtx.currentTime - state.startTime) - (state.globalOffset || 0);
+    
     const timeDiff = currentSongTime - state.lastJudge.time;
     const centerX = canvas.width / 2;
     const centerY = CONFIG.JUDGE_LINE_Y - 150; 
@@ -176,7 +181,6 @@ function drawJudgeUI(state) {
     }
 
     // --- 2. コンボ (中央・判定の下) ---
-    // ここは変更なし
     if (state.combo > 0) {
         ctx.save();
         ctx.translate(centerX, centerY + 40);
@@ -196,7 +200,9 @@ function drawJudgeUI(state) {
 
 //爆発エフェクト
 function drawEffects(state) {
-    const currentSongTime = state.audioCtx.currentTime - state.startTime;  
+    // ★変更: オフセット考慮
+    const currentSongTime = (state.audioCtx.currentTime - state.startTime) - (state.globalOffset || 0);
+    
     state.hitEffects.forEach(effect => {
         const elapsed = currentSongTime - effect.startTime;
         const progress = elapsed / effect.duration;

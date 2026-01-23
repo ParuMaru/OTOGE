@@ -55,8 +55,8 @@
     "bpm": 350.0,
     "offset": -0.266348,
     "difficulties": [
-      "Hard",
       "Medium",
+      "Hard",
       "Challenge"
     ],
     "format": "ogg",
@@ -81,8 +81,8 @@
     "bpm": 302.0,
     "offset": -0.181293,
     "difficulties": [
-      "Hard",
-      "Medium"
+      "Medium",
+      "Hard"
     ],
     "format": "ogg",
     "audioFile": "Debug Dance.ogg"
@@ -128,18 +128,18 @@
     "audioFile": "GOODWORLD.ogg"
   },
   {
-    "id": "Re\uff1aEnd of a Dream",
-    "folder": "Re\uff1aEnd of a Dream",
-    "title": "Re\\: End of a Dream",
+    "id": "Re_End_of_a_Dream",
+    "folder": "Re_End_of_a_Dream",
+    "title": "Re: End of a Dream",
     "bpm": 106.0,
     "offset": 0.000396,
     "difficulties": [
-      "Challenge",
       "Hard",
+      "Challenge",
       "Edit"
     ],
     "format": "ogg",
-    "audioFile": "Re\uff1aEnd of a Dream.ogg"
+    "audioFile": "Re_End_of_a_Dream.ogg"
   },
   {
     "id": "\u6708\u3068\u72fc",

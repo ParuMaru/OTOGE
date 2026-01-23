@@ -10,10 +10,9 @@
             overflow: hidden; 
             background: #111; 
             font-family: 'Arial', sans-serif;
-            /* ★追加: ダブルタップ拡大やスクロール等の標準動作を無効化 */
             touch-action: none; 
             user-select: none;
-            -webkit-user-select: none; /* Safari用 */
+            -webkit-user-select: none;
         }
         
         /* 共通シーンスタイル */
@@ -29,13 +28,12 @@
             box-sizing: border-box;
         }
 
-        /* ゲーム画面のみ背景を黒にする */
         #scene-game { 
             background: #000; 
             pointer-events: none; 
         }
 
-        /* --- 選曲画面のリストエリア --- */
+        /* リストとスクロールバー */
         #song-list {
             width: 600px;
             max-height: 70vh;
@@ -47,11 +45,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* ★追加: スマホでのスクロール操作性を向上 */
             -webkit-overflow-scrolling: touch; 
         }
-
-        /* スクロールバーのデザイン */
         #song-list::-webkit-scrollbar { width: 12px; }
         #song-list::-webkit-scrollbar-track { background: #333; border-radius: 6px; }
         #song-list::-webkit-scrollbar-thumb { background: #0ff; border-radius: 6px; }
@@ -68,14 +63,10 @@
             text-align: center;
             transition: 0.2s;
             border-radius: 4px;
-            /* ★追加: タップ時のハイライト色を消す */
             -webkit-tap-highlight-color: transparent; 
         }
         .song-btn:hover { background: #0ff; color: #000; }
-        
-        .song-btn:active {
-            background: #0cc; /* スマホ用に押した感を追加 */
-        }
+        .song-btn:active { background: #0cc; }
 
         #ui { 
             pointer-events: none; 
@@ -88,14 +79,12 @@
             text-shadow: 2px 2px 4px #000;
         }
 
-        /* ゲームキャンバス */
         canvas { 
             pointer-events: auto; 
             background: #000; 
             border-left: 2px solid #555;
             border-right: 2px solid #555;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-            /* ★変更: デフォルトは固定サイズだが、最大幅を制限 */
             max-width: 100%;
             max-height: 100%;
         }
@@ -119,65 +108,52 @@
             width: 100%;
         }
         
-        /* 設定パネルのデザイン */
-    #setting-panel {
-        width: 600px;
-        max-width: 95%; /* スマホ対応 */
-        background: #333;
-        border: 1px solid #555;
-        border-radius: 10px;
-        padding: 10px;
-        margin-bottom: 15px; /* リストとの間隔 */
-        text-align: center;
-        box-sizing: border-box;
-    }
+        /* 設定パネル */
+        #setting-panel {
+            width: 600px;
+            max-width: 95%;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+            box-sizing: border-box;
+        }
 
-    /* 設定ボタンの並び用 */
-    .setting-buttons {
-        display: flex;
-        justify-content: center;
-        gap: 5px;
-        flex-wrap: wrap; /* 画面が狭いときは折り返す */
-        margin-top: 5px;
-    }
+        .setting-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 5px;
+        }
 
-    /* 設定用ボタンの個別スタイル */
-    .setting-btn {
-        background: #444; 
-        color: #fff;
-        border: 1px solid #888;
-        padding: 5px 10px;
-        cursor: pointer;
-        border-radius: 4px;
-        font-size: 0.9rem;
-        min-width: 60px; /* 押しやすい幅 */
-    }
-    .setting-btn:active { background: #666; }
-    
-    /* FAST/SLOWの色分け */
-    .btn-fast { border-color: #00ccff; color: #00ccff; }
-    .btn-slow { border-color: #ff4444; color: #ff4444; }
+        .setting-btn {
+            background: #444; 
+            color: #fff;
+            border: 1px solid #888;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            min-width: 60px;
+        }
+        .setting-btn:active { background: #666; }
+        
+        .btn-fast { border-color: #00ccff; color: #00ccff; }
+        .btn-slow { border-color: #ff4444; color: #ff4444; }
 
-        /* ★追加: スマホ用レスポンシブ設定 */
         @media (max-width: 600px) {
             h1 { font-size: 2.5rem; }
-            
-            #song-list {
-                width: 95%; /* 画面幅いっぱいに */
-            }
-            
-            /* キャンバスを画面にフィットさせる */
+            #song-list { width: 95%; }
             canvas {
-                width: 100%;     /* 幅いっぱい */
-                height: auto;    /* アスペクト比維持 */
-                max-height: 90vh; /* 高さがあふれないように */
+                width: 100%;
+                height: auto;
+                max-height: 90vh;
                 object-fit: contain;
             }
-            
-            /* ボタンを押しやすく少し大きく */
-            .song-btn {
-                padding: 15px 0; 
-            }
+            .song-btn { padding: 15px 0; }
         }
     </style>
 </head>
@@ -189,10 +165,20 @@
 
     <div id="scene-select" class="scene" style="display: none;">
         <h2 style="margin-bottom: 10px;">SELECT MUSIC</h2>
-        
         <div id="setting-panel"></div>
-
         <div id="song-list"></div>
+    </div>
+    
+    <div id="scene-calibration" class="scene" style="display: none; background: #000;">
+        <h2 style="color: #0ff;">AUDIO CALIBRATION</h2>
+        <p style="font-size: 1.2rem; color: #ccc; margin: 20px;">
+            音に合わせて画面をタップ（またはキー押下）してください。<br>
+            <span style="font-size: 0.9rem; color: #888;">(目を閉じて音に集中するのがコツです)</span>
+        </p>
+        <div id="calib-status" style="font-size: 3rem; font-weight: bold; margin-top: 30px; color: white;">
+            READY?
+        </div>
+        <div id="calib-result" style="margin-top: 20px; color: #0f0; font-family: monospace;"></div>
     </div>
 
     <div id="scene-game" class="scene" style="display: none;">
