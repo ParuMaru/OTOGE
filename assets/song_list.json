@@ -25,6 +25,32 @@
     "audioFile": "Burning Heart.mp3"
   },
   {
+    "id": "Forest of Clock",
+    "folder": "Forest of Clock",
+    "title": "Forest of Clock",
+    "bpm": 175.0,
+    "offset": -0.068186,
+    "difficulties": [
+      "Hard"
+    ],
+    "format": "mp3",
+    "audioFile": "Forest of Clock.mp3"
+  },
+  {
+    "id": "GOODWORLD",
+    "folder": "GOODWORLD",
+    "title": "GOODWORLD",
+    "bpm": 165.0,
+    "offset": -0.306032,
+    "difficulties": [
+      "Medium",
+      "Hard",
+      "Challenge"
+    ],
+    "format": "ogg",
+    "audioFile": "GOODWORLD.ogg"
+  },
+  {
     "id": "halzion",
     "folder": "halzion",
     "title": "\u30cf\u30eb\u30b8\u30aa\u30f3",

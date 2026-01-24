@@ -5,8 +5,9 @@ import { initAudio, playSound } from './audio.js';
 import { initRenderer, renderGame } from './renderer.js';
 import { state } from './state.js';
 import { initInput } from './input.js';
-import { toTitle, finishGame } from './scene.js';
+import { toTitle, finishGame, playStageClearEffect } from './scene.js';
 import { handleJudge, createHitEffect, getEffectiveDiff } from './logic.js';
+
 
 // --- 初期化 ---
 const canvas = document.getElementById('gameCanvas');
@@ -122,7 +123,13 @@ function gameLoop() {
         ctx.fillText("TAP SCREEN OR PRESS KEY", canvas.width / 2, canvas.height / 2 + 40);
         ctx.restore();
     }
-
+    
+    // --- 演出トリガー ---
+    if (state.isInputFinished && !state.hasPlayedFinishEffect) {
+        state.hasPlayedFinishEffect = true; // 重複実行防止（state.jsには定義してないので動的に追加でOK、あるいはstate.jsに追加しても良い）
+        playStageClearEffect();
+    }
+    
     // --- 終了判定 ---
     if (state.notes.length > 0 && !state.isWaitingStart) {
         const lastNote = state.notes[state.notes.length - 1];

@@ -275,8 +275,10 @@ export function finishGame() {
     let specialMessage = '';
     const animStyle = `animation: blink 0.3s infinite alternate;`;
     if (isAllPerfect) {
+        spawnFullComboEffect(scenes.result, 'gold', 80);
         specialMessage = `<div style="color: #ffd700; font-size: 2.5rem; font-weight:bold; margin: 10px 0; text-shadow: 0 0 20px #ffd700; ${animStyle}">ALL PERFECT!!</div>`;
     } else if (isFullCombo) {
+        spawnFullComboEffect(scenes.result, 'cyan', 50);
         specialMessage = `<div style="color: #00ffcc; font-size: 2.5rem; font-weight:bold; margin: 10px 0; text-shadow: 0 0 20px #00ffcc;">FULL COMBO!!</div>`;
     }
 
@@ -349,7 +351,11 @@ export function runCalibrationLoop() {
     
     if (data.beatCount < BEAT_TOTAL) {
         const isAccent = (data.beatCount % 4 === 3);
-        isAccent ? playSound('beat_high') : playSound('beat_low');
+        if (isAccent) {
+            playSound('beat_high');
+        } else {
+            playSound('beat_low');
+        }
         
         const statusDiv = document.getElementById('calib-status');
         if (statusDiv) {
@@ -398,4 +404,49 @@ function finishCalibration() {
     if(resultDiv) resultDiv.innerText = `OFFSET SET TO: ${sign}${ms}ms`;
     
     setTimeout(toSelect, 2000);
+}
+
+function spawnFullComboEffect(container, type, count) {
+    // 画面フラッシュ
+    const flash = document.createElement('div');
+    flash.className = 'flash-effect';
+    container.appendChild(flash);
+    setTimeout(() => flash.remove(), 600);
+
+    // パーティクルの中心点（リザルト画面の中央付近）
+    // innerHTMLで追加した #effect-center を基準にすると位置合わせが楽です
+    const centerPoint = container.querySelector('#effect-center') || container;
+
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'fc-particle';
+
+        // 色とサイズをランダムに
+        const colorBase = type === 'gold' ? '#ffd700' : '#00ffcc';
+        const colorVar = type === 'gold' ? '#ffffff' : '#0099ff';
+        p.style.backgroundColor = Math.random() > 0.3 ? colorBase : colorVar;
+        p.style.boxShadow = `0 0 ${5 + Math.random() * 10}px ${colorBase}`;
+
+        // ランダムな角度と距離を計算
+        const angle = Math.random() * Math.PI * 2;
+        // 画面外まで飛ぶように距離を大きめに設定 (200px〜500px)
+        const distance = 200 + Math.random() * 300;
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+
+        // CSS変数に移動先をセット
+        p.style.setProperty('--tx', `${tx}px`);
+        p.style.setProperty('--ty', `${ty}px`);
+
+        // アニメーション適用 (時間も少しランダムに)
+        const duration = 1 + Math.random() * 0.5; // 1.0〜1.5秒
+        p.style.animation = `particle-burst ${duration}s ease-out forwards`;
+
+        centerPoint.appendChild(p);
+
+        // アニメーション終了後に要素を削除（メモリリーク防止）
+        setTimeout(() => {
+            p.remove();
+        }, duration * 1000 + 100);
+    }
 }
