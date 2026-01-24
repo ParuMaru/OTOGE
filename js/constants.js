@@ -8,7 +8,7 @@ export const CONFIG = {
     JUDGE_WINDOW: {
         PERFECT: 0.050,
         GREAT:   0.100,
-        BAD:     0.200
+        GOOD:     0.200
     },
     KEYS: ['d', 'f', 'j', 'k'],
     SONG_BASE_PATH: 'assets/songs/'

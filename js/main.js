@@ -4,7 +4,7 @@ import { CONFIG, } from './constants.js';
 import { initAudio, playSound, loadAudio, playMusic, stopMusic } from './audio.js';
 import { initRenderer, renderGame } from './renderer.js';
 
-// ★追加: スマホ向けにレーン幅をCanvas幅(400px)いっぱいに広げる
+// スマホ向けにレーン幅をCanvas幅(400px)いっぱいに広げる
 CONFIG.LANE_WIDTH = 100;
 
 // DOM要素の取得
@@ -38,15 +38,18 @@ const state = {
     laneLights: [0, 0, 0, 0],
     hitEffects: [],
     lastJudge: { text: '', time: -10, color: '#fff', timing: '' },
-    judgeCounts: { perfect: 0, great: 0, bad: 0, miss: 0 },
+    judgeCounts: { perfect: 0, great: 0, good: 0, miss: 0 },
     speedMultiplier: 1.0,
     keyState: [false, false, false, false],
     greenNumber: 500,
     globalOffset: initialOffset,
     gameMode: 'normal',
-
-    // ★追加: オートプレイ用フラグ
     isAuto: false,
+    
+    // ★追加: スタート待機用フラグと一時保存データ
+    isWaitingStart: false,
+    musicBuffer: null,
+    songOffset: 0,
 
     // キャリブレーション用変数
     calibData: {
@@ -62,6 +65,7 @@ const state = {
 // 初期化
 const canvas = document.getElementById('gameCanvas');
 initRenderer(canvas);
+const ctx = canvas.getContext('2d'); // 文字描画用にコンテキスト取得
 
 // --- ヘルパー関数: 停止時間を考慮した実質的な差分時間を計算 ---
 function getEffectiveDiff(currentTime, targetTime) {
@@ -205,16 +209,22 @@ function toSelect() {
         localStorage.setItem('rhythmGame_offset', state.globalOffset);
     };
 
-    const createOffsetBtn = (text, func, className) => {
+    const createOffsetBtn = (text, msAmount, className) => {
         const btn = document.createElement('button');
         btn.innerHTML = text;
         btn.className = `setting-btn ${className}`;
-        btn.onclick = () => { func(); updateLabels(); };
+        btn.onclick = () => { 
+            state.globalOffset += msAmount; 
+            saveOffset(); 
+            updateLabels(); 
+        };
         return btn;
     };
 
-    offsetContainer.appendChild(createOffsetBtn('-10ms', () => { state.globalOffset -= 0.01; saveOffset(); }, ''));
-    offsetContainer.appendChild(createOffsetBtn('+10ms', () => { state.globalOffset += 0.01; saveOffset(); }, ''));
+    offsetContainer.appendChild(createOffsetBtn('<< -10', -0.01, 'btn-fast'));
+    offsetContainer.appendChild(createOffsetBtn('< -1', -0.001, ''));
+    offsetContainer.appendChild(createOffsetBtn('+1 >', 0.001, ''));
+    offsetContainer.appendChild(createOffsetBtn('+10 >>', 0.01, 'btn-slow'));
     
     // キャリブレーションボタン
     const autoAdjBtn = document.createElement('button');
@@ -226,7 +236,7 @@ function toSelect() {
     autoAdjBtn.onclick = () => toCalibration();
     offsetContainer.appendChild(autoAdjBtn);
 
-    // ★追加: オートプレイボタン
+    // オートプレイボタン
     const autoPlayBtn = document.createElement('button');
     autoPlayBtn.className = 'setting-btn';
     autoPlayBtn.style.marginLeft = '5px';
@@ -314,7 +324,7 @@ function runCalibrationLoop() {
     if (state.currentScene !== 'calibration') return;
 
     const data = state.calibData;
-    const BEAT_TOTAL = 12; 
+    const BEAT_TOTAL = 20; 
     
     if (data.beatCount < BEAT_TOTAL) {
         const isAccent = (data.beatCount % 4 === 3);
@@ -435,7 +445,8 @@ async function startGame(songData, difficulty = 'Hard') {
         }
 
         const songBpm = chartData.bpm || songData.bpm;
-        const songOffset = (chartData.offset !== undefined) ? chartData.offset : (songData.offset || 0);
+        // ★修正: songOffsetをstateに保存して、開始時に使うようにする
+        state.songOffset = (chartData.offset !== undefined) ? chartData.offset : (songData.offset || 0);
         state.currentBpm = songBpm;
         
         let maxBpm = songData.bpm || 150; 
@@ -453,15 +464,16 @@ async function startGame(songData, difficulty = 'Hard') {
         state.score = 0;
         state.combo = 0;
         state.maxCombo = 0;
-        state.judgeCounts = { perfect: 0, great: 0, bad: 0, miss: 0 };
+        state.judgeCounts = { perfect: 0, great: 0, good: 0, miss: 0 };
         state.hitEffects = [];
         state.lastJudge = { text: '', time: -10, color: '#fff', timing: '' };
         
         state.notes = targetNotes.map(n => ({ ...n, hit: false, visible: true }));
 
-        state.isPlaying = true;
-        playMusic(musicBuffer);
-        state.startTime = state.audioCtx.currentTime - songOffset;
+        // ★修正: ここでは再生せず、待機モードにする
+        state.musicBuffer = musicBuffer;
+        state.isWaitingStart = true;
+        state.isPlaying = true; // ループは回す（描画のため）
 
         overlay.innerHTML = originalText;
         switchScene('game');
@@ -482,6 +494,15 @@ async function startGame(songData, difficulty = 'Hard') {
     }
 }
 
+// ★追加: 実際のゲーム開始処理（タップ後に呼ばれる）
+function startRealGame() {
+    if (!state.isWaitingStart) return;
+
+    playMusic(state.musicBuffer);
+    state.startTime = state.audioCtx.currentTime - state.songOffset;
+    state.isWaitingStart = false; // 待機解除
+}
+
 function finishGame() {
     state.isPlaying = false;
     switchScene('result');
@@ -495,7 +516,7 @@ function finishGame() {
     else if (state.score >= maxScore*0.6) rank = 'B';
 
     const isFullCombo = state.judgeCounts.miss === 0 && totalNotes > 0;
-    const isAllPerfect = isFullCombo && state.judgeCounts.great === 0 && state.judgeCounts.bad === 0;
+    const isAllPerfect = isFullCombo && state.judgeCounts.great === 0 && state.judgeCounts.good === 0;
 
     let specialMessage = '';
     const animStyle = `animation: blink 0.3s infinite alternate;`;
@@ -530,8 +551,8 @@ function finishGame() {
             padding: 20px; border-radius: 10px; border: 1px solid #444;
         ">
             <div style="color: #ffd700">PERFECT</div><div style="text-align: right">${state.judgeCounts.perfect}</div>
-            <div style="color: #00ffff">GREAT</div><div style="text-align: right">${state.judgeCounts.great}</div>
-            <div style="color: #ff8800">BAD</div><div style="text-align: right">${state.judgeCounts.bad}</div>
+            <div style="color: #0f0">GREAT</div><div style="text-align: right">${state.judgeCounts.great}</div>
+            <div style="color: #00fffa">GOOD</div><div style="text-align: right">${state.judgeCounts.good}</div>
             <div style="color: #888">MISS</div><div style="text-align: right">${state.judgeCounts.miss}</div>
         </div>
         <div style="margin-top: 30px; display: flex; gap: 20px;">
@@ -559,6 +580,12 @@ function handleInputDown(laneIndex) {
         return;
     }
     
+    // ★追加: 待機中ならゲーム開始して終了
+    if (state.currentScene === 'game' && state.isWaitingStart) {
+        startRealGame();
+        return;
+    }
+    
     if (state.currentScene !== 'game') return;
     if (!state.isPlaying || laneIndex < 0 || laneIndex >= CONFIG.LANE_COUNT) return;
     if (state.keyState[laneIndex]) return;
@@ -576,10 +603,10 @@ function handleInputDown(laneIndex) {
         const effectiveDiff = getEffectiveDiff(currentSongTime, targetNote.time);
         const diffAbs = Math.abs(effectiveDiff);
 
-        if (diffAbs <= CONFIG.JUDGE_WINDOW.BAD) {
+        if (diffAbs <= CONFIG.JUDGE_WINDOW.GOOD) {
             if (targetNote.duration > 0) {
                 targetNote.isHolding = true; 
-                let judge = 'BAD';
+                let judge = 'GOOD';
                 if (diffAbs <= CONFIG.JUDGE_WINDOW.PERFECT) judge = 'PERFECT';
                 else if (diffAbs <= CONFIG.JUDGE_WINDOW.GREAT) judge = 'GREAT';
                 handleJudge(judge, effectiveDiff > 0 ? 'FAST' : 'SLOW');
@@ -588,7 +615,7 @@ function handleInputDown(laneIndex) {
             } else {
                 targetNote.hit = true;
                 targetNote.visible = false;
-                let judge = 'BAD';
+                let judge = 'GOOD';
                 if (diffAbs <= CONFIG.JUDGE_WINDOW.PERFECT) judge = 'PERFECT';
                 else if (diffAbs <= CONFIG.JUDGE_WINDOW.GREAT) judge = 'GREAT';
                 handleJudge(judge, effectiveDiff > 0 ? 'FAST' : 'SLOW');
@@ -626,6 +653,13 @@ window.addEventListener('keydown', e => {
         handleCalibrationTap();
         return;
     }
+    
+    // ★追加: 待機中ならどのキーでもスタート
+    if (state.currentScene === 'game' && state.isWaitingStart) {
+        startRealGame();
+        return;
+    }
+
     const keyIndex = CONFIG.KEYS.indexOf(e.key.toLowerCase());
     if (keyIndex !== -1) handleInputDown(keyIndex);
 });
@@ -640,7 +674,7 @@ const touchMap = {};
 function setupTouchEvents() {
     const canvas = document.getElementById('gameCanvas');
     
-    // ★修正: タッチ位置検出を「画面4等分」に変更
+    // タッチ位置検出を「画面4等分」に変更
     const getLaneFromTouch = (touch) => {
         const rect = canvas.getBoundingClientRect();
         const relativeX = (touch.clientX - rect.left) / rect.width;
@@ -655,6 +689,13 @@ function setupTouchEvents() {
 
     canvas.addEventListener('touchstart', e => {
         e.preventDefault(); 
+        
+        // ★追加: 待機中ならタップでスタート
+        if (state.currentScene === 'game' && state.isWaitingStart) {
+            startRealGame();
+            return;
+        }
+
         for (let i = 0; i < e.changedTouches.length; i++) {
             const touch = e.changedTouches[i];
             const lane = getLaneFromTouch(touch);
@@ -692,10 +733,19 @@ window.addEventListener('touchstart', (e) => {
 function gameLoop() {
     if (!state.isPlaying) return;
 
+    // ★修正: 待機中は「時間を止める（-1.5秒地点で固定）」
+    // 描画関数(renderGame)は (現在時刻 - startTime) で時間を計算するため、
+    // startTime を毎フレーム更新して「常に差分が -1.5 になる」ように騙します。
+    if (state.isWaitingStart) {
+        // 目標時間(-1.5) = (現在時刻 - startTime) - globalOffset
+        // startTime = 現在時刻 - globalOffset - 目標時間
+        state.startTime = state.audioCtx.currentTime - state.globalOffset + 1.5;
+    }
+
     const currentSongTime = (state.audioCtx.currentTime - state.startTime) - state.globalOffset;
 
     // --- オートプレイ処理 ---
-    if (state.isAuto) {
+    if (state.isAuto && !state.isWaitingStart) { 
         state.notes.forEach(note => {
             if (note.hit || !note.visible) return;
             if (note.isHolding) return; 
@@ -704,6 +754,7 @@ function gameLoop() {
             
             if (effectiveDiff <= 0) {
                  state.laneLights[note.lane] = 0.3;
+                 
                  if (note.duration > 0) {
                      note.isHolding = true;
                      handleJudge('PERFECT', ''); 
@@ -719,7 +770,8 @@ function gameLoop() {
             }
         });
     }
-    // ----------------------
+
+    // --- 通常処理 ---
 
     for (let i = 0; i < CONFIG.LANE_COUNT; i++) {
         if (state.laneLights[i] > 0) state.laneLights[i] = Math.max(0, state.laneLights[i] - 0.05);
@@ -733,35 +785,54 @@ function gameLoop() {
         
         const effectiveDiff = getEffectiveDiff(currentSongTime, note.time);
         
-        if (!state.isAuto && !note.isHolding && effectiveDiff < -CONFIG.JUDGE_WINDOW.BAD && !note.hit) {
-            note.visible = false;
-            handleJudge('MISS');
-        }
-        
-        if (note.isHolding) {
-            const endTime = note.time + (note.duration || 0);
-            if (currentSongTime >= endTime) {
-                note.isHolding = false;
-                note.hit = true;      
-                note.visible = false; 
-                handleJudge('PERFECT'); 
-                playSound('hit');       
-                createHitEffect(note.lane);
+        if (!state.isWaitingStart) {
+            if (!state.isAuto && !note.isHolding && effectiveDiff < -CONFIG.JUDGE_WINDOW.BAD && !note.hit) {
+                note.visible = false;
+                handleJudge('MISS');
             }
-            state.laneLights[note.lane] = 0.2; 
+            
+            if (note.isHolding) {
+                const endTime = note.time + (note.duration || 0);
+                if (currentSongTime >= endTime) {
+                    note.isHolding = false;
+                    note.hit = true;      
+                    note.visible = false; 
+                    handleJudge('PERFECT'); 
+                    playSound('hit');       
+                    createHitEffect(note.lane);
+                }
+                state.laneLights[note.lane] = 0.2; 
+            }
         }
     });
 
     renderGame(state);
+    
+    // 待機中のオーバーレイ表示
+    if (state.isWaitingStart) {
+        ctx.save();
+        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "bold 30px Arial";
+        ctx.fillStyle = "#fff";
+        ctx.shadowColor = "#0ff";
+        ctx.shadowBlur = 10;
+        ctx.fillText("TOUCH TO START", canvas.width / 2, canvas.height / 2);
+        
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#ccc";
+        ctx.shadowBlur = 0;
+        ctx.fillText("TAP SCREEN OR PRESS KEY", canvas.width / 2, canvas.height / 2 + 40);
+        ctx.restore();
+    }
 
-    // ★修正: 終了判定のロジックを変更
-    if (state.notes.length > 0) {
-        // 最後のノーツを取得
+    if (state.notes.length > 0 && !state.isWaitingStart) {
         const lastNote = state.notes[state.notes.length - 1];
-        // 終了時間 = 開始時間 + 長さ(なければ0)
         const lastNoteEndTime = lastNote.time + (lastNote.duration || 0);
         
-        // 最後のノーツが終わってから 2秒後 に終了
         if (currentSongTime > lastNoteEndTime + 2.0) {
             finishGame();
             return;
@@ -789,11 +860,11 @@ function handleJudge(judge,timing) {
         } else if (judge === 'GREAT') {
             state.judgeCounts.great++;
             state.score += 500;
-            state.lastJudge.color = '#00ffff';
-        } else if (judge === 'BAD') {
-            state.judgeCounts.bad++;
+            state.lastJudge.color = '#0f0';
+        } else if (judge === 'GOOD') {
+            state.judgeCounts.good++;
             state.score += 100;
-            state.lastJudge.color = '#ff8800';
+            state.lastJudge.color = '#00fffa';
         }
         state.lastJudge.timing = timing;
     }
