@@ -850,11 +850,23 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-function handleJudge(judge,timing) {
+function handleJudge(judge, timing) {
     const currentTime = (state.audioCtx.currentTime - state.startTime) - state.globalOffset;
 
-    const totalNotes = state.notes.length > 0 ? state.notes.length : 1;
-    const unitScore = 1000000 / totalNotes;
+    // ★修正: スコア計算の分母を「判定回数」に合わせる
+    // ロングノーツ(duration > 0)は「始点」と「終点」で2回加点されるため、分母も2としてカウントする
+    let totalScoreableCounts = 0;
+    state.notes.forEach(n => {
+        if (n.duration > 0) {
+            totalScoreableCounts += 2; // ロングノーツは2コンボ分
+        } else {
+            totalScoreableCounts += 1; // 通常ノーツは1コンボ分
+        }
+    });
+    
+    // ゼロ除算防止
+    const totalCounts = totalScoreableCounts > 0 ? totalScoreableCounts : 1;
+    const unitScore = 1000000 / totalCounts;
 
     if (judge === 'MISS') {
         state.judgeCounts.miss++;
@@ -881,6 +893,9 @@ function handleJudge(judge,timing) {
         state.lastJudge.timing = timing;
     }
     
+    // スコアが100万を超えないように念のためキャップする（計算誤差対策）
+    if (state.score > 1000000) state.score = 1000000;
+
     // 表示更新
     const displayScore = Math.round(state.score).toString().padStart(7, '0');
 
