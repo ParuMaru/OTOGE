@@ -12,30 +12,6 @@
     "audioFile": "AAAAA.mp3"
   },
   {
-    "id": "Breakin' Chain",
-    "folder": "Breakin' Chain",
-    "title": "Breakin' Chain",
-    "bpm": 412.0,
-    "offset": -0.512562,
-    "difficulties": [
-      "Challenge"
-    ],
-    "format": "ogg",
-    "audioFile": "Breakin' Chain.ogg"
-  },
-  {
-    "id": "BroGamer",
-    "folder": "BroGamer",
-    "title": "BroGamer",
-    "bpm": 103.5,
-    "offset": -1.092,
-    "difficulties": [
-      "Challenge"
-    ],
-    "format": "ogg",
-    "audioFile": "BroGamer.ogg"
-  },
-  {
     "id": "Burning Heart",
     "folder": "Burning Heart",
     "title": "Burning Heart",
@@ -49,85 +25,6 @@
     "audioFile": "Burning Heart.mp3"
   },
   {
-    "id": "Carry Me Away",
-    "folder": "Carry Me Away",
-    "title": "Carry Me Away",
-    "bpm": 350.0,
-    "offset": -0.266348,
-    "difficulties": [
-      "Medium",
-      "Hard",
-      "Challenge"
-    ],
-    "format": "ogg",
-    "audioFile": "carry me away.ogg"
-  },
-  {
-    "id": "DEADHEAT",
-    "folder": "DEADHEAT",
-    "title": "DEADHEAT",
-    "bpm": 200.0,
-    "offset": -0.71034,
-    "difficulties": [
-      "Challenge"
-    ],
-    "format": "ogg",
-    "audioFile": "DEADHEAT.ogg"
-  },
-  {
-    "id": "Debug Dance",
-    "folder": "Debug Dance",
-    "title": "Debug Dance",
-    "bpm": 302.0,
-    "offset": -0.181293,
-    "difficulties": [
-      "Medium",
-      "Hard"
-    ],
-    "format": "ogg",
-    "audioFile": "Debug Dance.ogg"
-  },
-  {
-    "id": "Far Away",
-    "folder": "Far Away",
-    "title": "Far Away",
-    "bpm": 155.0,
-    "offset": -0.607619,
-    "difficulties": [
-      "Medium",
-      "Hard",
-      "Challenge"
-    ],
-    "format": "ogg",
-    "audioFile": "Far Away.ogg"
-  },
-  {
-    "id": "Get Over The Culture",
-    "folder": "Get Over The Culture",
-    "title": "Get Over The Culture",
-    "bpm": 170.0,
-    "offset": -1.00054,
-    "difficulties": [
-      "Challenge"
-    ],
-    "format": "ogg",
-    "audioFile": "Get Over The Culture.ogg"
-  },
-  {
-    "id": "GOODWORLD",
-    "folder": "GOODWORLD",
-    "title": "GOODWORLD",
-    "bpm": 165.0,
-    "offset": -0.306032,
-    "difficulties": [
-      "Medium",
-      "Hard",
-      "Challenge"
-    ],
-    "format": "ogg",
-    "audioFile": "GOODWORLD.ogg"
-  },
-  {
     "id": "halzion",
     "folder": "halzion",
     "title": "\u30cf\u30eb\u30b8\u30aa\u30f3",
@@ -139,20 +36,6 @@
     ],
     "format": "mp3",
     "audioFile": "halzion.mp3"
-  },
-  {
-    "id": "Re_End_of_a_Dream",
-    "folder": "Re_End_of_a_Dream",
-    "title": "Re: End of a Dream",
-    "bpm": 106.0,
-    "offset": 0.000396,
-    "difficulties": [
-      "Hard",
-      "Challenge",
-      "Edit"
-    ],
-    "format": "ogg",
-    "audioFile": "Re_End_of_a_Dream.ogg"
   },
   {
     "id": "shining_star",
