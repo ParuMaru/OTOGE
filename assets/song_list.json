@@ -142,6 +142,18 @@
     "audioFile": "Re_End_of_a_Dream.ogg"
   },
   {
+    "id": "shining_star",
+    "folder": "shining_star",
+    "title": "\u30b7\u30e3\u30a4\u30cb\u30f3\u30b0\u30b9\u30bf\u30fc",
+    "bpm": 158.0,
+    "offset": -0.029615,
+    "difficulties": [
+      "Hard"
+    ],
+    "format": "mp3",
+    "audioFile": "shining_star.mp3"
+  },
+  {
     "id": "\u6708\u3068\u72fc",
     "folder": "\u6708\u3068\u72fc",
     "title": "\u6708\u3068\u72fc",
