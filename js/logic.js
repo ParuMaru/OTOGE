@@ -74,6 +74,12 @@ export function handleJudge(judge, timing) {
     state.lastJudge.text = judge;
     state.lastJudge.time = currentTime;
     
+    //  全ノーツ処理完了チェック
+    const remainingNotes = state.notes.filter(n => n.visible).length;
+    if (remainingNotes === 0 && !state.isInputFinished) {
+        state.isInputFinished = true;
+    }
+    
     if (uiScore) {
         const mult = state.speedMultiplier || 1.0;
         const actual = Math.round(CONFIG.NOTE_SPEED * mult);

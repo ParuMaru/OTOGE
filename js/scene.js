@@ -262,6 +262,7 @@ export function finishGame() {
     state.isPlaying = false;
     switchScene('result');
 
+    // ランク計算
     let rank = 'C';
     if (state.score >= 990000) rank = 'SSS';
     else if (state.score >= 950000) rank = 'SS';
@@ -274,11 +275,11 @@ export function finishGame() {
 
     let specialMessage = '';
     const animStyle = `animation: blink 0.3s infinite alternate;`;
+
+    // ★修正点1: ここではメッセージの準備だけを行う（エフェクト実行はまだしない）
     if (isAllPerfect) {
-        spawnFullComboEffect(scenes.result, 'gold', 80);
         specialMessage = `<div style="color: #ffd700; font-size: 2.5rem; font-weight:bold; margin: 10px 0; text-shadow: 0 0 20px #ffd700; ${animStyle}">ALL PERFECT!!</div>`;
     } else if (isFullCombo) {
-        spawnFullComboEffect(scenes.result, 'cyan', 50);
         specialMessage = `<div style="color: #00ffcc; font-size: 2.5rem; font-weight:bold; margin: 10px 0; text-shadow: 0 0 20px #00ffcc;">FULL COMBO!!</div>`;
     }
 
@@ -291,11 +292,14 @@ export function finishGame() {
 
     const displayScore = Math.round(state.score).toString().padStart(7, '0');
 
+    // ★画面を描画（ここでエフェクト用の目印 #effect-center が作られる）
     scenes.result.innerHTML = `
         <h1 style="color: #ff0055; margin-bottom: 10px;">FINISH!</h1>
         <h2 style="color: #fff">${state.selectedSong ? state.selectedSong.title : ''}</h2>
         ${specialMessage}
-        <div style="font-size: 3rem; color: cyan; font-weight: bold; text-shadow: 0 0 20px cyan;">
+        <div id="effect-center" style="position:absolute; top:40%; left:50%; width:0; height:0;"></div>
+
+        <div style="font-size: 3rem; color: cyan; font-weight: bold; text-shadow: 0 0 20px cyan; margin-top: 20px;">
             RANK ${rank}
         </div>
         <div style="margin: 20px 0; font-size: 1.5rem;">
@@ -320,6 +324,13 @@ export function finishGame() {
 
     document.getElementById('btn-retry').onclick = () => startGame(state.selectedSong);
     document.getElementById('btn-select').onclick = () => toSelect();
+
+    // ★修正点2: 画面描画が終わった「後」にエフェクトを実行する
+    if (isAllPerfect) {
+        spawnFullComboEffect(scenes.result, 'gold', 80);
+    } else if (isFullCombo) {
+        spawnFullComboEffect(scenes.result, 'cyan', 50);
+    }
 }
 
 // --- CALIBRATION ---
@@ -449,4 +460,50 @@ function spawnFullComboEffect(container, type, count) {
             p.remove();
         }, duration * 1000 + 100);
     }
+}
+
+/**
+ * ステージ終了時のカットイン演出（FINISH / FULL COMBO）
+ */
+export function playStageClearEffect() {
+    const container = document.getElementById('scene-game');
+    
+    // フルコンボかどうかでテキストを変える
+    const isFullCombo = state.judgeCounts.miss === 0;
+    const text = isFullCombo ? "FULL COMBO!!" : "FINISH!!";
+    const color = isFullCombo ? "#00ffcc" : "#ff0055"; // 青緑 or 赤
+    
+    const el = document.createElement('div');
+    el.innerText = text;
+    
+    // スタイル設定（CSSでクラス定義してもいいですが、ここで直接書いちゃいます）
+    Object.assign(el.style, {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%) scale(0)', // 最初は小さく
+        color: color,
+        fontSize: '4rem',
+        fontWeight: 'bold',
+        fontStyle: 'italic',
+        textShadow: `0 0 20px ${color}, 0 0 40px white`,
+        zIndex: '200',
+        pointerEvents: 'none',
+        whiteSpace: 'nowrap',
+        transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s'
+    });
+
+    container.appendChild(el);
+
+    // アニメーション実行（少し遅らせて拡大）
+    requestAnimationFrame(() => {
+        el.style.transform = 'translate(-50%, -50%) scale(1.2)';
+        el.style.opacity = '1';
+    });
+
+    // 数秒後に消す（リザルト遷移の邪魔にならないように）
+    setTimeout(() => {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 500);
+    }, 2000);
 }

@@ -30,6 +30,7 @@ export const state = {
     musicDuration: 0,
     currentBpm: 0,
     bpmEvents: [],
+    isInputFinished: false,
 
     calibData: {
         active: false,
@@ -53,4 +54,6 @@ export function resetGameState() {
     state.laneLights = [0, 0, 0, 0];
     state.isWaitingStart = true;
     state.isPlaying = true;
+    state.isInputFinished = false;
+    state.hasPlayedFinishEffect = false;
 }
