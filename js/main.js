@@ -7,6 +7,13 @@ import { initRenderer, renderGame } from './renderer.js';
 // スマホ向けにレーン幅をCanvas幅(400px)いっぱいに広げる
 CONFIG.LANE_WIDTH = 100;
 
+// 判定幅定義 (DDR風)
+const JUDGE_RANGES = {
+    PERFECT: 0.033, // 33ms
+    GREAT: 0.092,   // 92ms
+    GOOD: 0.142     // 142ms
+};
+
 // DOM要素の取得
 const scenes = {
     title: document.getElementById('scene-title'),
@@ -470,7 +477,7 @@ async function startGame(songData, difficulty = 'Hard') {
         if (uiScore) {
             const mult = state.speedMultiplier || 1.0;
             const actual = Math.round(CONFIG.NOTE_SPEED * mult);
-            uiScore.innerHTML = `SCORE: 0<br><span style="font-size:0.7em; color:#aaa">SPD: ${actual} (x${mult.toFixed(1)})</span>`;
+            uiScore.innerHTML = `SCORE: 0000000<br><span style="font-size:0.7em; color:#aaa">SPD: ${actual} (x${mult.toFixed(1)})</span>`;
         }
         
         state.musicDuration = musicBuffer.duration;
@@ -486,7 +493,6 @@ async function startGame(songData, difficulty = 'Hard') {
 function startRealGame() {
     if (!state.isWaitingStart) return;
 
-    // スタート時に全キーの入力状態を強制リセット
     for (let i = 0; i < CONFIG.LANE_COUNT; i++) {
         state.keyState[i] = false;
     }
@@ -501,15 +507,17 @@ function finishGame() {
     switchScene('result');
 
     const totalNotes = state.notes.length; 
-    const maxScore = totalNotes * 1000; 
     
+    // ★修正: ランク計算 (99万でSSS)
     let rank = 'C';
-    if (state.score >= maxScore*0.85) rank = 'S';
-    else if (state.score >= maxScore*0.7) rank = 'A';
-    else if (state.score >= maxScore*0.6) rank = 'B';
+    if (state.score >= 990000) rank = 'SSS';
+    else if (state.score >= 950000) rank = 'SS';
+    else if (state.score >= 900000) rank = 'S';
+    else if (state.score >= 800000) rank = 'A';
+    else if (state.score >= 700000) rank = 'B';
 
     const isFullCombo = state.judgeCounts.miss === 0 && totalNotes > 0;
-    // ★変更: bad -> good
+    // ALL PERFECTはスコアではなく判定数でチェック
     const isAllPerfect = isFullCombo && state.judgeCounts.great === 0 && state.judgeCounts.good === 0;
 
     let specialMessage = '';
@@ -528,6 +536,8 @@ function finishGame() {
         document.head.appendChild(style);
     }
 
+    const displayScore = Math.round(state.score).toString().padStart(7, '0');
+
     scenes.result.innerHTML = `
         <h1 style="color: #ff0055; margin-bottom: 10px;">FINISH!</h1>
         <h2 style="color: #fff">${state.selectedSong.title}</h2>
@@ -536,7 +546,7 @@ function finishGame() {
             RANK ${rank}
         </div>
         <div style="margin: 20px 0; font-size: 1.5rem;">
-            SCORE: ${state.score} <br>
+            SCORE: ${displayScore} <br>
             <span style="font-size: 1rem; color: #aaa">MAX COMBO: ${state.maxCombo}</span>
         </div>
         <div style="
@@ -594,13 +604,12 @@ function handleInputDown(laneIndex) {
             const effectiveDiff = getEffectiveDiff(currentSongTime, targetNote.time);
             const diffAbs = Math.abs(effectiveDiff);
 
-            // ★変更: BAD -> GOOD, 色の変更は handleJudge で行う
-            if (diffAbs <= CONFIG.JUDGE_WINDOW.GOOD) {
+            if (diffAbs <= JUDGE_RANGES.GOOD) {
                 if (targetNote.duration > 0) {
                     targetNote.isHolding = true; 
                     let judge = 'GOOD';
-                    if (diffAbs <= CONFIG.JUDGE_WINDOW.PERFECT) judge = 'PERFECT';
-                    else if (diffAbs <= CONFIG.JUDGE_WINDOW.GREAT) judge = 'GREAT';
+                    if (diffAbs <= JUDGE_RANGES.PERFECT) judge = 'PERFECT';
+                    else if (diffAbs <= JUDGE_RANGES.GREAT) judge = 'GREAT';
                     handleJudge(judge, effectiveDiff > 0 ? 'FAST' : 'SLOW');
                     playSound('hit');
                     createHitEffect(laneIndex);
@@ -608,8 +617,8 @@ function handleInputDown(laneIndex) {
                     targetNote.hit = true;
                     targetNote.visible = false;
                     let judge = 'GOOD';
-                    if (diffAbs <= CONFIG.JUDGE_WINDOW.PERFECT) judge = 'PERFECT';
-                    else if (diffAbs <= CONFIG.JUDGE_WINDOW.GREAT) judge = 'GREAT';
+                    if (diffAbs <= JUDGE_RANGES.PERFECT) judge = 'PERFECT';
+                    else if (diffAbs <= JUDGE_RANGES.GREAT) judge = 'GREAT';
                     handleJudge(judge, effectiveDiff > 0 ? 'FAST' : 'SLOW');
                     playSound('hit');
                     createHitEffect(laneIndex);
@@ -662,7 +671,6 @@ window.addEventListener('keydown', e => {
 
     const keyIndex = CONFIG.KEYS.indexOf(e.key.toLowerCase());
     if (keyIndex !== -1) {
-        // 強制リセットしてバグ防止
         state.keyState[keyIndex] = false;
         handleInputDown(keyIndex);
     }
@@ -788,7 +796,7 @@ function gameLoop() {
         const effectiveDiff = getEffectiveDiff(currentSongTime, note.time);
         
         if (!state.isWaitingStart) {
-            if (!state.isAuto && !note.isHolding && effectiveDiff < -CONFIG.JUDGE_WINDOW.GOOD && !note.hit) {
+            if (!state.isAuto && !note.isHolding && effectiveDiff < -JUDGE_RANGES.GOOD && !note.hit) {
                 note.visible = false;
                 handleJudge('MISS');
             }
@@ -845,6 +853,9 @@ function gameLoop() {
 function handleJudge(judge,timing) {
     const currentTime = (state.audioCtx.currentTime - state.startTime) - state.globalOffset;
 
+    const totalNotes = state.notes.length > 0 ? state.notes.length : 1;
+    const unitScore = 1000000 / totalNotes;
+
     if (judge === 'MISS') {
         state.judgeCounts.miss++;
         state.combo = 0;
@@ -856,25 +867,29 @@ function handleJudge(judge,timing) {
         
         if (judge === 'PERFECT') {
             state.judgeCounts.perfect++;
-            state.score += 1000;
+            state.score += unitScore; // 100%
             state.lastJudge.color = '#ffd700'; // 金
         } else if (judge === 'GREAT') {
             state.judgeCounts.great++;
-            state.score += 500;
+            state.score += unitScore * 0.5; // 50%
             state.lastJudge.color = '#0f0'; // 緑
         } else if (judge === 'GOOD') {
             state.judgeCounts.good++; 
-            state.score += 100;
+            state.score += unitScore * 0.1; // 10%
             state.lastJudge.color = '#00fffa'; // 水色
         }
         state.lastJudge.timing = timing;
     }
+    
+    // 表示更新
+    const displayScore = Math.round(state.score).toString().padStart(7, '0');
+
     state.lastJudge.text = judge;
     state.lastJudge.time = currentTime;
     if (uiScore) {
         const mult = state.speedMultiplier || 1.0;
         const actual = Math.round(CONFIG.NOTE_SPEED * mult);
-        uiScore.innerHTML = `SCORE: ${state.score}<br><span style="font-size:0.7em; color:#aaa">SPD: ${actual} (x${mult.toFixed(1)})</span>`;
+        uiScore.innerHTML = `SCORE: ${displayScore}<br><span style="font-size:0.7em; color:#aaa">SPD: ${actual} (x${mult.toFixed(1)})</span>`;
     }
 }
 
