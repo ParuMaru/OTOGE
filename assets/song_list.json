@@ -51,6 +51,18 @@
     "audioFile": "shining_star.mp3"
   },
   {
+    "id": "The Oath",
+    "folder": "The Oath",
+    "title": "The Oath",
+    "bpm": 132.0,
+    "offset": -0.025857,
+    "difficulties": [
+      "Hard"
+    ],
+    "format": "mp3",
+    "audioFile": "The Oath.mp3"
+  },
+  {
     "id": "\u6708\u3068\u72fc",
     "folder": "\u6708\u3068\u72fc",
     "title": "\u6708\u3068\u72fc",
