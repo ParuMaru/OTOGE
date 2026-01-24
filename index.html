@@ -68,6 +68,28 @@
         .song-btn:hover { background: #0ff; color: #000; }
         .song-btn:active { background: #0cc; }
 
+        /* モード選択ボタン用スタイル */
+        .mode-btn {
+            width: 200px;
+            padding: 20px;
+            font-size: 1.5rem;
+            margin: 10px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            border: 2px solid;
+            background: #333;
+            color: #fff;
+            transition: 0.2s;
+        }
+        .mode-btn:active { transform: scale(0.95); }
+        
+        #btn-beginner { border-color: #0f0; color: #0f0; }
+        #btn-beginner:hover { background: #0f0; color: #000; }
+        
+        #btn-normal { border-color: #f0f; color: #f0f; }
+        #btn-normal:hover { background: #f0f; color: #000; }
+
         #ui { 
             pointer-events: none; 
             position: absolute; 
@@ -154,13 +176,18 @@
                 object-fit: contain;
             }
             .song-btn { padding: 15px 0; }
+            .mode-btn { width: 80%; }
         }
     </style>
 </head>
 <body>
     <div id="scene-title" class="scene">
         <h1>音ゲーだよ</h1>
-        <p>CLICK / TAP TO START</p>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <button id="btn-beginner" class="mode-btn">BEGINNER MODE</button>
+            <button id="btn-normal" class="mode-btn">NORMAL MODE</button>
+        </div>
+        <p style="margin-top:20px; color:#888;">Select Mode</p>
     </div>
 
     <div id="scene-select" class="scene" style="display: none;">
@@ -173,7 +200,6 @@
         <h2 style="color: #0ff;">AUDIO CALIBRATION</h2>
         <p style="font-size: 1.2rem; color: #ccc; margin: 20px;">
             音に合わせて画面をタップ（またはキー押下）してください。<br>
-            <span style="font-size: 0.9rem; color: #888;">(目を閉じて音に集中するのがコツです)</span>
         </p>
         <div id="calib-status" style="font-size: 3rem; font-weight: bold; margin-top: 30px; color: white;">
             READY?
