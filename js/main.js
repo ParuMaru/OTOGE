@@ -694,29 +694,22 @@ function gameLoop() {
 
     const currentSongTime = (state.audioCtx.currentTime - state.startTime) - state.globalOffset;
 
-    // ★追加: オートプレイの処理
+    // --- オートプレイ処理 ---
     if (state.isAuto) {
         state.notes.forEach(note => {
             if (note.hit || !note.visible) return;
-            // ホールド中の処理は下の通常処理に任せる
             if (note.isHolding) return; 
 
-            // 判定ラインに到達したら自動ヒット
             const effectiveDiff = getEffectiveDiff(currentSongTime, note.time);
             
             if (effectiveDiff <= 0) {
-                 // ビジュアルエフェクト（キービーム）
                  state.laneLights[note.lane] = 0.3;
-                 
-                 // 判定処理
                  if (note.duration > 0) {
-                     // ロングノーツ開始
                      note.isHolding = true;
-                     handleJudge('PERFECT', ''); // Autoは常にPerfect
+                     handleJudge('PERFECT', ''); 
                      playSound('hit');
                      createHitEffect(note.lane);
                  } else {
-                     // 通常ノーツ
                      note.hit = true;
                      note.visible = false;
                      handleJudge('PERFECT', '');
@@ -726,8 +719,7 @@ function gameLoop() {
             }
         });
     }
-
-    // --- ここから通常処理 ---
+    // ----------------------
 
     for (let i = 0; i < CONFIG.LANE_COUNT; i++) {
         if (state.laneLights[i] > 0) state.laneLights[i] = Math.max(0, state.laneLights[i] - 0.05);
@@ -741,8 +733,6 @@ function gameLoop() {
         
         const effectiveDiff = getEffectiveDiff(currentSongTime, note.time);
         
-        // オートプレイ中は見逃し判定を無効化（既にヒットしているはずなので）
-        // ただしホールド終端処理は必要
         if (!state.isAuto && !note.isHolding && effectiveDiff < -CONFIG.JUDGE_WINDOW.BAD && !note.hit) {
             note.visible = false;
             handleJudge('MISS');
@@ -764,9 +754,15 @@ function gameLoop() {
 
     renderGame(state);
 
+    // ★修正: 終了判定のロジックを変更
     if (state.notes.length > 0) {
-        const lastNoteTime = state.notes[state.notes.length - 1].time;
-        if (currentSongTime > lastNoteTime + 2.0) {
+        // 最後のノーツを取得
+        const lastNote = state.notes[state.notes.length - 1];
+        // 終了時間 = 開始時間 + 長さ(なければ0)
+        const lastNoteEndTime = lastNote.time + (lastNote.duration || 0);
+        
+        // 最後のノーツが終わってから 2秒後 に終了
+        if (currentSongTime > lastNoteEndTime + 2.0) {
             finishGame();
             return;
         }
