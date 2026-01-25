@@ -214,6 +214,46 @@
             animation: screen-flash 0.5s ease-out forwards;
         }
         
+        .result-layout {
+            display: flex;
+            flex-direction: column; /* 通常は縦並び */
+            align-items: center;
+            width: 100%;
+        }
+        .result-left, .result-right {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .rank-text {
+            font-size: 3rem; color: cyan; font-weight: bold; text-shadow: 0 0 20px cyan; margin-top: 10px;
+        }
+        .score-box {
+            margin: 10px 0; font-size: 1.5rem; text-align: center;
+        }
+        .judge-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 5px 20px; 
+            text-align: left; background: rgba(0,0,0,0.5); 
+            padding: 15px; border-radius: 10px; border: 1px solid #444;
+            width: 250px; margin-bottom: 15px;
+        }
+        .result-buttons {
+            display: flex; gap: 20px; width: 100%; justify-content: center;
+        }
+        .fc-msg {
+            font-size: 2rem; font-weight:bold; margin: 5px 0;
+        }
+        .select-layout-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        
+        
+        
+        /*　スマホ用　*/
         @media (max-width: 600px) {
             h1 { font-size: 2.5rem; }
             #song-list { width: 95%; }
@@ -226,6 +266,91 @@
             .song-btn { padding: 15px 0; }
             .mode-btn { width: 80%; }
         }
+        @media screen and (orientation: landscape) and (max-height: 600px) {
+    
+            /* 文字サイズ全体を少し小さく */
+            h1 { font-size: 1.5rem !important; margin-bottom: 5px !important; }
+            h2 { font-size: 1rem !important; margin-bottom: 5px !important; }
+
+            /* ========== 選曲画面 (Select) ========== */
+            .select-layout-wrapper {
+                flex-direction: row;
+                justify-content: center;
+                align-items: flex-start;
+                gap: 20px;
+                height: 80vh;
+            }
+
+            /* 設定パネル（左） */
+            #setting-panel {
+                width: 300px !important; /* ★変更: 280pxだと窮屈なので300pxに拡大 */
+                max-height: 100%;
+                overflow-y: auto;
+            }
+
+            /* ★追加: ボタンエリアをGridレイアウトにして整列させる */
+            .setting-buttons {
+                display: grid;
+                grid-template-columns: repeat(5, 1fr); /* 4列均等配置 */
+                gap: 4px; /* ボタン間の隙間を均一に */
+                justify-content: stretch;
+            }
+
+            /* ★追加: ボタン自体のサイズ調整 */
+            .setting-buttons .setting-btn {
+                min-width: auto !important; /* 最小幅制限を解除して枠に収める */
+                width: 100%;
+                padding: 8px 0; /* 高さを確保しつつ横余白を削る */
+                font-size: 0.8rem; /* 少し文字を小さくして収まりよくする */
+                margin: 0; /* マージンリセット */
+            }
+
+            /* これにより、上段4つ、下段2つ（大きめ）のきれいな配置になります */
+            .setting-buttons > button:nth-child(6) {
+                grid-column: span 2;
+                background-color: #383838; /* 少し区別しやすく（好みで削除可） */
+            }
+
+            /* 曲リスト（右） */
+            #song-list {
+                width: 350px !important;
+                height: 100% !important;
+                max-height: 100% !important;
+            }
+
+            /* ========== リザルト画面 (Result) ========== */
+            /* ... 以下変更なし ... */
+            .result-layout {
+                flex-direction: row;
+                justify-content: center;
+                align-items: center;
+                gap: 30px;
+                margin-top: 10px;
+            }
+
+            .result-left {
+                width: 40%;
+                align-items: flex-end;
+            }
+            .result-right {
+                width: 40%;
+                align-items: flex-start;
+            }
+
+            .rank-text { font-size: 2.5rem; margin-top: 0; }
+            .score-box { font-size: 1.2rem; }
+            .judge-grid { padding: 10px; width: 220px; font-size: 0.9rem; margin-bottom: 10px; }
+            .fc-msg { font-size: 1.5rem; }
+
+            .result-buttons {
+                justify-content: flex-start;
+            }
+            .result-buttons .song-btn {
+                padding: 5px 15px;
+                font-size: 0.9rem;
+            }
+        }
+        
     </style>
 </head>
 <body>
@@ -239,10 +364,12 @@
     </div>
 
     <div id="scene-select" class="scene" style="display: none;">
-        <h2 style="margin-bottom: 10px;">SELECT MUSIC</h2>
+    <h2 style="margin-bottom: 5px;">SELECT MUSIC</h2>
+    <div class="select-layout-wrapper">
         <div id="setting-panel"></div>
         <div id="song-list"></div>
     </div>
+</div>
     
     <div id="scene-calibration" class="scene" style="display: none; background: #000;">
         <h2 style="color: #0ff;">AUDIO CALIBRATION</h2>

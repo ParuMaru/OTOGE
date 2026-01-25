@@ -17,6 +17,31 @@ const uiScore = document.getElementById('score');
 // 曲リストデータ
 let globalSongList = [];
 
+// スコア保存用キー生成ヘルパー
+const getScoreKey = (folder, difficulty) => `rhythmGame_score_${folder}_${difficulty}`;
+
+// ★追加: ランク計算ヘルパー関数
+function getRank(score) {
+    if (score >= 990000) return 'SSS';
+    if (score >= 950000) return 'SS';
+    if (score >= 900000) return 'S';
+    if (score >= 800000) return 'A';
+    if (score >= 700000) return 'B';
+    return 'C';
+}
+
+// ★追加: ランクごとの色定義
+function getRankColor(rank) {
+    switch(rank) {
+        case 'SSS': return '#ffd700'; // 金
+        case 'SS':  return '#00ffcc'; // 水色
+        case 'S':   return '#ff0055'; // 赤
+        case 'A':   return '#00cc00'; // 緑
+        case 'B':   return '#ffaa00'; // オレンジ
+        default:    return '#888';    // グレー
+    }
+}
+
 // シーン切り替え基本関数
 export function switchScene(sceneName) {
     state.currentScene = sceneName;
@@ -114,6 +139,18 @@ export function toSelect() {
     speedContainer.appendChild(createBtn('< -10', () => changeSpeed(-10), 'btn-fast'));
     speedContainer.appendChild(createBtn('+10 >', () => changeSpeed(10), 'btn-slow'));
     speedContainer.appendChild(createBtn('+100 >>', () => changeSpeed(100), 'btn-slow'));
+
+    const autoBtn = document.createElement('button');
+    autoBtn.className = 'setting-btn';
+    const updateAutoBtn = () => {
+        autoBtn.innerText = state.isAuto ? 'AUTO: ON' : 'AUTO: OFF';
+        autoBtn.style.borderColor = state.isAuto ? '#ff0' : '#888';
+        autoBtn.style.color = state.isAuto ? '#ff0' : '#888';
+    };
+    updateAutoBtn();
+    autoBtn.onclick = () => { state.isAuto = !state.isAuto; updateAutoBtn(); };
+    speedContainer.appendChild(autoBtn);
+
     settingPanel.appendChild(speedContainer);
 
     const offsetContainer = document.createElement('div');
@@ -133,20 +170,8 @@ export function toSelect() {
     offsetContainer.appendChild(createBtn('+10 >>', () => changeOffset(0.01), 'btn-slow'));
     
     const adjBtn = createBtn('ADJUST', () => toCalibration());
-    adjBtn.style.borderColor = '#0f0'; adjBtn.style.color = '#0f0'; adjBtn.style.marginLeft = '10px';
+    adjBtn.style.borderColor = '#0f0'; adjBtn.style.color = '#0f0'; 
     offsetContainer.appendChild(adjBtn);
-
-    const autoBtn = document.createElement('button');
-    autoBtn.className = 'setting-btn';
-    autoBtn.style.marginLeft = '5px';
-    const updateAutoBtn = () => {
-        autoBtn.innerText = state.isAuto ? 'AUTO: ON' : 'AUTO: OFF';
-        autoBtn.style.borderColor = state.isAuto ? '#ff0' : '#888';
-        autoBtn.style.color = state.isAuto ? '#ff0' : '#888';
-    };
-    updateAutoBtn();
-    autoBtn.onclick = () => { state.isAuto = !state.isAuto; updateAutoBtn(); };
-    offsetContainer.appendChild(autoBtn);
 
     settingPanel.appendChild(offsetContainer);
 
@@ -178,7 +203,30 @@ export function toSelect() {
             const btn = document.createElement('button');
             btn.className = 'song-btn';
             btn.style.flex = '1';
-            btn.innerText = diffName; 
+            
+            // ★修正: スコアとランクの表示
+            const savedData = JSON.parse(localStorage.getItem(getScoreKey(song.folder, diffName)));
+            
+            let labelHtml = `<div>${diffName}</div>`;
+            if (savedData && savedData.score > 0) {
+                const scoreStr = Math.round(savedData.score).toString().padStart(7, '0');
+                
+                // データにランクがなければ計算する（後方互換性）
+                const rank = savedData.rank || getRank(savedData.score);
+                const rankColor = getRankColor(rank);
+
+                labelHtml += `<div style="font-size:0.8rem; margin-top:2px;">${scoreStr}</div>`;
+                labelHtml += `<div style="font-size:0.9rem; font-weight:bold; color:${rankColor}; margin-top:2px;">${rank}</div>`;
+                
+                if (savedData.isAP) {
+                    btn.style.borderColor = '#ffd700';
+                    btn.style.boxShadow = '0 0 5px rgba(255, 215, 0, 0.3)';
+                } else if (savedData.isFC) {
+                    btn.style.borderColor = '#00ffcc';
+                }
+            }
+            btn.innerHTML = labelHtml;
+            
             btn.onclick = () => startGame(song, diffName);
             diffContainer.appendChild(btn);
         });
@@ -190,6 +238,8 @@ export function toSelect() {
 // --- GAME START ---
 export async function startGame(songData, difficulty = 'Hard') {
     state.selectedSong = songData; 
+    state.selectedDifficulty = difficulty;
+    
     const overlay = document.getElementById('scene-select');
     const originalText = overlay.innerHTML;
     overlay.innerHTML = '<h1 style="color:white">LOADING DATA...</h1>';
@@ -262,25 +312,45 @@ export function finishGame() {
     state.isPlaying = false;
     switchScene('result');
 
-    // ランク計算
-    let rank = 'C';
-    if (state.score >= 990000) rank = 'SSS';
-    else if (state.score >= 950000) rank = 'SS';
-    else if (state.score >= 900000) rank = 'S';
-    else if (state.score >= 800000) rank = 'A';
-    else if (state.score >= 700000) rank = 'B';
+    // ★修正: ランク計算をヘルパー関数に委譲
+    const rank = getRank(state.score);
 
     const isFullCombo = state.judgeCounts.miss === 0 && state.notes.length > 0;
     const isAllPerfect = isFullCombo && state.judgeCounts.great === 0 && state.judgeCounts.good === 0;
 
+    // ★修正: ランク情報も保存
+    if (!state.isAuto && state.selectedSong) {
+        const key = getScoreKey(state.selectedSong.folder, state.selectedDifficulty);
+        const oldData = JSON.parse(localStorage.getItem(key)) || { score: 0, isFC: false, isAP: false };
+        
+        const finalScore = Math.round(state.score);
+        
+        // ハイスコア更新時、またはスコアが同じでも新しい方がランクが良い場合(ありえないが念のため)にデータを更新
+        // 基本はスコアが高い方を保存
+        if (finalScore >= oldData.score) {
+            const newData = {
+                score: finalScore,
+                rank: rank, // ★ランク保存
+                isFC: oldData.isFC || isFullCombo,
+                isAP: oldData.isAP || isAllPerfect
+            };
+            localStorage.setItem(key, JSON.stringify(newData));
+        } else {
+             // スコアは更新していないが、FC/APランプがついた場合のみ更新
+             if ((isFullCombo && !oldData.isFC) || (isAllPerfect && !oldData.isAP)) {
+                 const newData = { ...oldData, isFC: oldData.isFC || isFullCombo, isAP: oldData.isAP || isAllPerfect };
+                 localStorage.setItem(key, JSON.stringify(newData));
+             }
+        }
+    }
+
     let specialMessage = '';
     const animStyle = `animation: blink 0.3s infinite alternate;`;
 
-    // ★修正点1: ここではメッセージの準備だけを行う（エフェクト実行はまだしない）
     if (isAllPerfect) {
-        specialMessage = `<div style="color: #ffd700; font-size: 2.5rem; font-weight:bold; margin: 10px 0; text-shadow: 0 0 20px #ffd700; ${animStyle}">ALL PERFECT!!</div>`;
+        specialMessage = `<div class="fc-msg" style="color: #ffd700; text-shadow: 0 0 20px #ffd700; ${animStyle}">ALL PERFECT!!</div>`;
     } else if (isFullCombo) {
-        specialMessage = `<div style="color: #00ffcc; font-size: 2.5rem; font-weight:bold; margin: 10px 0; text-shadow: 0 0 20px #00ffcc;">FULL COMBO!!</div>`;
+        specialMessage = `<div class="fc-msg" style="color: #00ffcc; text-shadow: 0 0 20px #00ffcc;">FULL COMBO!!</div>`;
     }
 
     if (!document.getElementById('anim-style')) {
@@ -292,44 +362,45 @@ export function finishGame() {
 
     const displayScore = Math.round(state.score).toString().padStart(7, '0');
 
-    // ★画面を描画（ここでエフェクト用の目印 #effect-center が作られる）
     scenes.result.innerHTML = `
-        <h1 style="color: #ff0055; margin-bottom: 10px;">FINISH!</h1>
-        <h2 style="color: #fff">${state.selectedSong ? state.selectedSong.title : ''}</h2>
-        ${specialMessage}
-        <div id="effect-center" style="position:absolute; top:40%; left:50%; width:0; height:0;"></div>
+        <h1 style="color: #ff0055; margin: 10px 0 5px 0; font-size: 2rem;">FINISH!</h1>
+        <h2 style="color: #fff; font-size: 1.2rem; margin: 0;">${state.selectedSong ? state.selectedSong.title : ''}</h2>
+        
+        <div class="result-layout">
+            <div class="result-left">
+                ${specialMessage}
+                <div class="rank-text">RANK ${rank}</div>
+                <div class="score-box">
+                    SCORE: ${displayScore} <br>
+                    <span style="font-size: 0.8rem; color: #aaa">MAX COMBO: ${state.maxCombo}</span>
+                </div>
+            </div>
 
-        <div style="font-size: 3rem; color: cyan; font-weight: bold; text-shadow: 0 0 20px cyan; margin-top: 20px;">
-            RANK ${rank}
+            <div class="result-right">
+                <div class="judge-grid">
+                    <div style="color: #ffd700">PERFECT</div><div style="text-align: right">${state.judgeCounts.perfect}</div>
+                    <div style="color: #0f0">GREAT</div><div style="text-align: right">${state.judgeCounts.great}</div>
+                    <div style="color: #00fffa">GOOD</div><div style="text-align: right">${state.judgeCounts.good}</div>
+                    <div style="color: #888">MISS</div><div style="text-align: right">${state.judgeCounts.miss}</div>
+                </div>
+                
+                <div class="result-buttons">
+                    <button id="btn-retry" class="song-btn">RETRY</button>
+                    <button id="btn-select" class="song-btn">SELECT SONG</button>
+                </div>
+            </div>
         </div>
-        <div style="margin: 20px 0; font-size: 1.5rem;">
-            SCORE: ${displayScore} <br>
-            <span style="font-size: 1rem; color: #aaa">MAX COMBO: ${state.maxCombo}</span>
-        </div>
-        <div style="
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px 30px; 
-            text-align: left; background: rgba(0,0,0,0.5); 
-            padding: 20px; border-radius: 10px; border: 1px solid #444;
-        ">
-            <div style="color: #ffd700">PERFECT</div><div style="text-align: right">${state.judgeCounts.perfect}</div>
-            <div style="color: #0f0">GREAT</div><div style="text-align: right">${state.judgeCounts.great}</div>
-            <div style="color: #00fffa">GOOD</div><div style="text-align: right">${state.judgeCounts.good}</div>
-            <div style="color: #888">MISS</div><div style="text-align: right">${state.judgeCounts.miss}</div>
-        </div>
-        <div style="margin-top: 30px; display: flex; gap: 20px;">
-            <button id="btn-retry" class="song-btn" style="width: auto; text-align: center;">RETRY</button>
-            <button id="btn-select" class="song-btn" style="width: auto; text-align: center;">SELECT SONG</button>
-        </div>
+        
+        <div id="effect-center" style="position:absolute; top:50%; left:50%; width:0; height:0;"></div>
     `;
 
-    document.getElementById('btn-retry').onclick = () => startGame(state.selectedSong);
+    document.getElementById('btn-retry').onclick = () => startGame(state.selectedSong, state.selectedDifficulty);
     document.getElementById('btn-select').onclick = () => toSelect();
 
-    // ★修正点2: 画面描画が終わった「後」にエフェクトを実行する
     if (isAllPerfect) {
-        spawnFullComboEffect(scenes.result, 'gold', 80);
+        if(window.spawnFullComboEffect) window.spawnFullComboEffect(scenes.result, 'gold', 80);
     } else if (isFullCombo) {
-        spawnFullComboEffect(scenes.result, 'cyan', 50);
+        if(window.spawnFullComboEffect) window.spawnFullComboEffect(scenes.result, 'cyan', 50);
     }
 }
 
@@ -389,7 +460,7 @@ export function runCalibrationLoop() {
     }
 }
 
-// 内部関数（export不要だが、シーン内ロジックなのでここに配置）
+// 内部関数
 function finishCalibration() {
     state.calibData.active = false;
     const diffs = state.calibData.diffs;
@@ -418,70 +489,55 @@ function finishCalibration() {
 }
 
 function spawnFullComboEffect(container, type, count) {
-    // 画面フラッシュ
     const flash = document.createElement('div');
     flash.className = 'flash-effect';
     container.appendChild(flash);
     setTimeout(() => flash.remove(), 600);
 
-    // パーティクルの中心点（リザルト画面の中央付近）
-    // innerHTMLで追加した #effect-center を基準にすると位置合わせが楽です
     const centerPoint = container.querySelector('#effect-center') || container;
 
     for (let i = 0; i < count; i++) {
         const p = document.createElement('div');
         p.className = 'fc-particle';
 
-        // 色とサイズをランダムに
         const colorBase = type === 'gold' ? '#ffd700' : '#00ffcc';
         const colorVar = type === 'gold' ? '#ffffff' : '#0099ff';
         p.style.backgroundColor = Math.random() > 0.3 ? colorBase : colorVar;
         p.style.boxShadow = `0 0 ${5 + Math.random() * 10}px ${colorBase}`;
 
-        // ランダムな角度と距離を計算
         const angle = Math.random() * Math.PI * 2;
-        // 画面外まで飛ぶように距離を大きめに設定 (200px〜500px)
         const distance = 200 + Math.random() * 300;
         const tx = Math.cos(angle) * distance;
         const ty = Math.sin(angle) * distance;
 
-        // CSS変数に移動先をセット
         p.style.setProperty('--tx', `${tx}px`);
         p.style.setProperty('--ty', `${ty}px`);
 
-        // アニメーション適用 (時間も少しランダムに)
-        const duration = 1 + Math.random() * 0.5; // 1.0〜1.5秒
+        const duration = 1 + Math.random() * 0.5; 
         p.style.animation = `particle-burst ${duration}s ease-out forwards`;
 
         centerPoint.appendChild(p);
 
-        // アニメーション終了後に要素を削除（メモリリーク防止）
         setTimeout(() => {
             p.remove();
         }, duration * 1000 + 100);
     }
 }
 
-/**
- * ステージ終了時のカットイン演出（FINISH / FULL COMBO）
- */
 export function playStageClearEffect() {
     const container = document.getElementById('scene-game');
-    
-    // フルコンボかどうかでテキストを変える
     const isFullCombo = state.judgeCounts.miss === 0;
     const text = isFullCombo ? "FULL COMBO!!" : "FINISH!!";
-    const color = isFullCombo ? "#00ffcc" : "#ff0055"; // 青緑 or 赤
+    const color = isFullCombo ? "#00ffcc" : "#ff0055"; 
     
     const el = document.createElement('div');
     el.innerText = text;
     
-    // スタイル設定（CSSでクラス定義してもいいですが、ここで直接書いちゃいます）
     Object.assign(el.style, {
         position: 'absolute',
         top: '50%',
         left: '50%',
-        transform: 'translate(-50%, -50%) scale(0)', // 最初は小さく
+        transform: 'translate(-50%, -50%) scale(0)', 
         color: color,
         fontSize: '4rem',
         fontWeight: 'bold',
@@ -495,13 +551,11 @@ export function playStageClearEffect() {
 
     container.appendChild(el);
 
-    // アニメーション実行（少し遅らせて拡大）
     requestAnimationFrame(() => {
         el.style.transform = 'translate(-50%, -50%) scale(1.2)';
         el.style.opacity = '1';
     });
 
-    // 数秒後に消す（リザルト遷移の邪魔にならないように）
     setTimeout(() => {
         el.style.opacity = '0';
         setTimeout(() => el.remove(), 500);

@@ -6,7 +6,8 @@ const initialOffset = savedOffset ? parseFloat(savedOffset) : 0.0;
 
 export const state = {
     currentScene: 'title',
-    selectedSong: null, 
+    selectedSong: null,
+    selectedDifficulty: null, // ★追加: 現在プレイ中の難易度を記録
     isPlaying: false,
     startTime: 0,
     score: 0,
@@ -31,6 +32,7 @@ export const state = {
     currentBpm: 0,
     bpmEvents: [],
     isInputFinished: false,
+    hasPlayedFinishEffect: false, // ★念のためここにも定義しておきます
 
     calibData: {
         active: false,
