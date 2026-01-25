@@ -8,9 +8,31 @@ import { initInput } from './input.js';
 import { toTitle, finishGame, playStageClearEffect } from './scene.js';
 import { handleJudge, createHitEffect, getEffectiveDiff } from './logic.js';
 
+const canvas = document.getElementById('gameCanvas');
+
+// ★追加: 画面サイズに合わせてCanvasと設定を更新する関数
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // レーンの幅を画面幅の1/4に再設定
+    CONFIG.LANE_WIDTH = canvas.width / CONFIG.LANE_COUNT;
+    
+    // 判定ラインの位置も画面の高さに合わせて調整 (下から100pxの位置など)
+    // 定数 JUDGE_LINE_Y は書き換えられない(constだとエラーになる)ので、
+    // constants.js の CONFIG.JUDGE_LINE_Y を書き換えるか、
+    // ここで直接値を更新するようにコード全体の修正が必要ですが、
+    // いったん「判定ラインは高さの80%の位置」とする例を書きます
+    
+    CONFIG.JUDGE_LINE_Y = canvas.height * 0.8;
+}
+
+resizeCanvas();
+//  スマホが回転したりウィンドウサイズが変わったら実行
+window.addEventListener('resize', resizeCanvas);
 
 // --- 初期化 ---
-const canvas = document.getElementById('gameCanvas');
+
 initRenderer(canvas);
 initInput(canvas);
 
@@ -22,6 +44,8 @@ requestAnimationFrame(gameLoop);
 
 // --- ゲームループ ---
 const ctx = canvas.getContext('2d');
+
+
 
 function gameLoop() {
     if (!state.isPlaying) {
