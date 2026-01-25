@@ -103,14 +103,20 @@
         }
 
         canvas { 
-            pointer-events: auto; 
-            background: #000; 
-            border-left: 2px solid #555;
-            border-right: 2px solid #555;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-            max-width: 100%;
-            max-height: 100%;
-        }
+    pointer-events: auto; 
+    background: #000; 
+    border-left: 2px solid #555;
+    border-right: 2px solid #555;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+    
+    /* 中央揃えにするための設定 */
+    display: block;
+    margin: 0 auto; 
+    
+    /* 画面からはみ出さないように */
+    max-width: 100%;
+    max-height: 100%;
+}
 
         h1 { font-size: 4rem; margin-bottom: 20px; color: #0ff; text-shadow: 0 0 10px #0ff; }
         h2 { margin-top: 0; color: #ccc; }

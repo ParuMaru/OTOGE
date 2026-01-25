@@ -10,21 +10,26 @@ import { handleJudge, createHitEffect, getEffectiveDiff } from './logic.js';
 
 const canvas = document.getElementById('gameCanvas');
 
-// ★追加: 画面サイズに合わせてCanvasと設定を更新する関数
 function resizeCanvas() {
-    canvas.width = window.innerWidth;
+    // ★設定: ゲーム画面の最大横幅 (px)
+    // これ以上は横に広がらず、黒帯になります。
+    // スマホ横持ちなら 500～600 くらいが遊びやすい。
+    const MAX_GAME_WIDTH = 500; 
+
+    // 横幅は「画面幅」か「最大幅」の小さい方を選ぶ
+    // これにより、縦画面のときは画面いっぱい、横画面のときは500px固定になります
+    canvas.width = Math.min(window.innerWidth, MAX_GAME_WIDTH);
+    
+    // 縦幅は常に画面いっぱい
     canvas.height = window.innerHeight;
 
-    // レーンの幅を画面幅の1/4に再設定
+    // レーン幅の再計算
     CONFIG.LANE_WIDTH = canvas.width / CONFIG.LANE_COUNT;
     
-    // 判定ラインの位置も画面の高さに合わせて調整 (下から100pxの位置など)
-    // 定数 JUDGE_LINE_Y は書き換えられない(constだとエラーになる)ので、
-    // constants.js の CONFIG.JUDGE_LINE_Y を書き換えるか、
-    // ここで直接値を更新するようにコード全体の修正が必要ですが、
-    // いったん「判定ラインは高さの80%の位置」とする例を書きます
-    
-    CONFIG.JUDGE_LINE_Y = canvas.height * 0.8;
+    // 判定ラインの位置 (画面の高さに応じて調整)
+    // 落下距離を長く見せたい場合は、数値を大きく（下げる）します
+    // 例: 画面の下から 15% の位置
+    CONFIG.JUDGE_LINE_Y = canvas.height * 0.85;
 }
 
 resizeCanvas();
