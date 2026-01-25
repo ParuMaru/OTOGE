@@ -143,7 +143,7 @@ export function toSelect() {
     const autoBtn = document.createElement('button');
     autoBtn.className = 'setting-btn';
     const updateAutoBtn = () => {
-        autoBtn.innerText = state.isAuto ? 'AUTO: ON' : 'AUTO: OFF';
+        autoBtn.innerText = state.isAuto ? 'AUTO' : 'AUTO';
         autoBtn.style.borderColor = state.isAuto ? '#ff0' : '#888';
         autoBtn.style.color = state.isAuto ? '#ff0' : '#888';
     };
