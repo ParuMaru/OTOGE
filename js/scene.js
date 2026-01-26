@@ -17,7 +17,7 @@ const uiScore = document.getElementById('score');
 // 曲リストデータ
 let globalSongList = [];
 
-// ★変更: スコア保存用キーに「モード(4K/8K)」を含める
+// スコア保存用キーに「モード(4K/7K)」を含める
 const getScoreKey = (folder, difficulty, mode) => `rhythmGame_score_${folder}_${difficulty}_${mode}`;
 
 // ランク計算ヘルパー関数
@@ -251,12 +251,18 @@ export function toSelect() {
 // --- GAME START ---
 export async function startGame(songData, difficulty = 'Hard') {
     
+    state.isPlaying = false; 
+    stopMusic();
+    
     state.selectedSong = songData; 
     state.selectedDifficulty = difficulty;
     
     const overlay = document.getElementById('scene-select');
-    const originalText = overlay.innerHTML;
-    overlay.innerHTML = '<h1 style="color:white">LOADING DATA...</h1>';
+    // リトライ時などは現在のシーンを取得
+    const loadingContainer = document.getElementById(state.currentScene) || overlay;
+    
+    // 簡易ローディング表示（コンソールに出す）
+    console.log("Loading game...");
 
     try {
         const base = `${CONFIG.SONG_BASE_PATH}${songData.folder}/`;
@@ -269,7 +275,9 @@ export async function startGame(songData, difficulty = 'Hard') {
             fetch(chartUrl).then(res => res.json()) 
         ]);
         
+        // ... (BPMイベント処理はそのまま) ...
         if (chartData.bpmEvents) {
+            // (省略: 元のコードのまま)
             let accumulatedY = 0;
             for (let i = 0; i < chartData.bpmEvents.length; i++) {
                 const evt = chartData.bpmEvents[i];
@@ -285,29 +293,51 @@ export async function startGame(songData, difficulty = 'Hard') {
             state.bpmEvents = [{ time: 0, bpm: state.currentBpm || 150, y: 0 }];
         }
 
+        // ノーツ取得
         let targetNotes = chartData[difficulty];
-        if (!targetNotes) targetNotes = Object.values(chartData).find(val => Array.isArray(val)) || [];
+        if (!targetNotes) {
+            targetNotes = Object.values(chartData).find(val => Array.isArray(val)) || [];
+        }
+        if (!targetNotes || targetNotes.length === 0) {
+            throw new Error("No chart data found.");
+        }
 
+        // 各種設定
         state.songOffset = (chartData.offset !== undefined) ? chartData.offset : (songData.offset || 0);
         state.currentBpm = chartData.bpm || songData.bpm;
         
-        let maxBpm = songData.bpm || 150; 
-        if (chartData.bpmEvents) {
-            chartData.bpmEvents.forEach(evt => { if (evt.bpm > maxBpm) maxBpm = evt.bpm; });
-        }
-
-        const baseScale = 4.0;
-        state.speedMultiplier = (CONFIG.JUDGE_LINE_Y * 1000) / (state.greenNumber * (maxBpm || 150) * baseScale);
-
+        // ここでリセット実行！
         resetGameState();
 
-        state.notes = targetNotes.map(n => ({ ...n, hit: false, visible: true }));
+        // 譜面データをセット（新しいオブジェクトとしてコピー）
+        state.notes = targetNotes.map(n => ({ 
+            ...n, 
+            hit: false, 
+            visible: true,
+            isHolding: false // ホールド状態も確実に初期化
+        }));
+        
         state.musicBuffer = musicBuffer;
         state.musicDuration = musicBuffer.duration;
+        
+        // スピード倍率計算
+        let maxBpm = songData.bpm || 150; 
+        if (state.bpmEvents) {
+            
+            state.bpmEvents.forEach(evt => {
+                if (evt.bpm > maxBpm && evt.bpm < 500) { // 500未満のものだけ採用
+                    maxBpm = evt.bpm; 
+                }
+            });
+            
+        }
+        const baseScale = 4.0;
+        state.speedMultiplier = (CONFIG.JUDGE_LINE_Y * 1000) / (state.greenNumber * maxBpm * baseScale);
 
-        overlay.innerHTML = originalText;
+        // 画面切り替え
         switchScene('game');
 
+        // スコア表示リセット
         if (uiScore) {
             const mult = state.speedMultiplier || 1.0;
             const actual = Math.round(CONFIG.NOTE_SPEED * mult);
@@ -315,9 +345,9 @@ export async function startGame(songData, difficulty = 'Hard') {
         }
         
     } catch (error) {
-        console.error("ロードエラー:", error);
-        alert(`ロードエラー:\n${error.message}`);
-        overlay.innerHTML = originalText;
+        console.error("Game Start Error:", error);
+        alert("エラーが発生しました。選曲画面に戻ります。");
+        toSelect();
     }
 }
 

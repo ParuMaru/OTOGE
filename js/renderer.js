@@ -4,7 +4,6 @@ import { CONFIG } from './constants.js';
 let canvas = null;
 let ctx = null;
 
-// ★重要: この関数が renderer.js 内に存在しないとエラーになります
 const getLaneRect = (laneIdx) => {
     // 比率設定がない場合は均等割り
     if (!CONFIG.LANE_RATIOS) {

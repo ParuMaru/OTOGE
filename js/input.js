@@ -19,7 +19,6 @@ function getLaneFromTouch(touch, canvas) {
     const relativeX = (touch.clientX - rect.left); // ピクセル座標
     
     // rendererと同じ計算ロジックが必要（簡易的に再計算）
-    // 本来はrendererからexportして共有するのがベストですが、ここではロジックを再現します
     const totalW = CONFIG.LANE_WIDTH * CONFIG.LANE_COUNT;
     const startX = (canvas.width - totalW) / 2;
     

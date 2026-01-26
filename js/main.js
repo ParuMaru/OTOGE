@@ -160,7 +160,6 @@ function gameLoop() {
         
         if (currentSongTime > lastNoteEndTime + 2.0) {
             finishGame();
-            return; 
         }
     }
     

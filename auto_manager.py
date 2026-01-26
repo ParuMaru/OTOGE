@@ -24,14 +24,14 @@ DIFFICULTY_ORDER = {
 
 # 7ボタンモード用レーン定義
 BMS_LANE_MAP = {
-    '11': 0, # S
-    '12': 1, # D
-    '13': 2, # F
-    '14': 3, # SPACE (中心)
-    '15': 4, # J
-    '18': 5, # K
-    '19': 6  # L
-    # '16': スクラッチはマップから削除（無視される）
+    '11': 0, 
+    '12': 1, 
+    '13': 2, 
+    '14': 3, # SPACE
+    '15': 4, 
+    '18': 5, 
+    '19': 6
+    # 16 (スクラッチ) は無視
 }
 
 # --- 共通ヘルパー: 難易度名の推定 ---
@@ -40,7 +40,6 @@ def guess_bms_difficulty(filename, title):
     title = title.upper()
     name_body = os.path.splitext(filename)[0]
     
-    # ファイル名やタイトルに含まれるキーワードで判定
     if "BEGINNER" in filename or "BEGINNER" in title: return "Beginner"
     if "LEGGENDARIA" in filename or "LEGGENDARIA" in title: return "Leggendaria"
     if "INSANE" in filename or "INSANE" in title: return "Insane"
@@ -49,14 +48,13 @@ def guess_bms_difficulty(filename, title):
     if "NORMAL" in filename or "NORMAL" in title: return "Normal"
     if "LIGHT" in filename or "LIGHT" in title: return "Normal"
     
-    # 末尾の識別子 (_N, _H, _A 等)
     if name_body.endswith("_B"): return "Beginner"
     if name_body.endswith("_L"): return "Leggendaria"
     if name_body.endswith("_A"): return "Another"
     if name_body.endswith("_H"): return "Hyper"
     if name_body.endswith("_N"): return "Normal"
     
-    return "Unknown" # デフォルト
+    return "Unknown" 
 
 # --- SMファイル処理 ---
 def convert_sm_to_json(sm_path):
@@ -67,7 +65,6 @@ def convert_sm_to_json(sm_path):
         print(f"  [Error] Read failed: {e}")
         return None, None
 
-    # メタデータ取得
     title_match = re.search(r"#TITLE:(.*?);", content)
     title = title_match.group(1).strip() if title_match else "Unknown Title"
     
@@ -80,7 +77,6 @@ def convert_sm_to_json(sm_path):
     music_match = re.search(r"#MUSIC:(.*?);", content)
     music_file = music_match.group(1).strip() if music_match else ""
 
-    # BPM解析
     bpm_match = re.search(r'#BPMS:(.*?);', content, re.DOTALL)
     bpms = []
     if bpm_match:
@@ -89,7 +85,6 @@ def convert_sm_to_json(sm_path):
                 b, v = item.split('=')
                 bpms.append((float(b), float(v)))
     
-    # STOP解析
     stop_match = re.search(r'#STOPS:(.*?);', content, re.DOTALL)
     stops = []
     if stop_match:
@@ -100,7 +95,6 @@ def convert_sm_to_json(sm_path):
                     b, v = item.split('=')
                     stops.append((float(b), float(v)))
 
-    # BPMイベント構築
     all_points = set([b[0] for b in bpms] + [s[0] for s in stops])
     sorted_beats = sorted(list(all_points))
     bpm_events = []
@@ -155,7 +149,7 @@ def convert_sm_to_json(sm_path):
         "bpm": bpms[0][1] if bpms else 120.0, 
         "offset": sm_offset, 
         "bpmEvents": bpm_events,
-        "keyCount": 4
+        "keyCount": 7 # 7Keyに合わせておく
     }
     difficulty_list = []
 
@@ -183,7 +177,7 @@ def convert_sm_to_json(sm_path):
                     note_beat = round(curr_beat + (i * beats_per_line), 6)
                     note_time = get_time_at_beat(note_beat)
                     for lane, char in enumerate(line):
-                        if lane >= 4: break
+                        if lane >= 7: break # 7レーンまでに制限
                         if char == '1' or char == 'M': 
                             parsed_notes.append({"time": round(note_time, 4), "lane": lane, "duration": 0})
                         elif char == '2': active_holds[lane] = note_time
@@ -202,11 +196,11 @@ def convert_sm_to_json(sm_path):
         "offset": sm_offset,
         "difficulties": difficulty_list,
         "music_file": music_file,
-        "keyCount": 4
+        "keyCount": 7
     }
     return metadata, charts
 
-# --- BMSファイル処理 (単体パース) ---
+# --- BMSファイル処理 ---
 def parse_single_bms(bms_path):
     try:
         with open(bms_path, 'r', encoding='shift_jis', errors='ignore') as f:
@@ -292,30 +286,23 @@ def scan_all_songs():
         print(f"Folder not found: {SONGS_DIR}")
         return
 
-    # os.listdirでフォルダ一覧を取得
-    try:
-        folders = [f for f in os.listdir(SONGS_DIR) if os.path.isdir(os.path.join(SONGS_DIR, f))]
-    except OSError as e:
-        print(f"Error reading songs directory: {e}")
-        return
-
+    folders = [f for f in os.listdir(SONGS_DIR) if os.path.isdir(os.path.join(SONGS_DIR, f))]
     print(f"Found {len(folders)} folders in {SONGS_DIR}...")
 
     for folder in folders:
         folder_path = os.path.join(SONGS_DIR, folder)
         json_file = os.path.join(folder_path, f"{folder}.json")
         
-        # フォルダ内の全ファイルを取得し、拡張子で分類（大文字小文字無視）
+        all_files = []
         try:
             all_files = os.listdir(folder_path)
         except OSError:
-            print(f"Skipping {folder}: Cannot access directory.")
             continue
 
         sm_files = [os.path.join(folder_path, f) for f in all_files if f.lower().endswith('.sm')]
         bms_files = [os.path.join(folder_path, f) for f in all_files if f.lower().endswith(('.bms', '.bme', '.bml'))]
         
-        # 1. SMファイルがある場合
+        # 1. SMファイル
         if sm_files:
             print(f"Processing SM: {folder} ...", end="")
             meta, charts = convert_sm_to_json(sm_files[0])
@@ -323,55 +310,39 @@ def scan_all_songs():
                 with open(json_file, 'w', encoding='utf-8') as f:
                     json.dump(charts, f, indent=2)
                 
-                # 音声ファイル確認
-                target_music = meta["music_file"]
-                # ターゲット音楽ファイルも大文字小文字の違いを吸収して探す
-                found_audio = None
-                
-                # 指定されたファイル名がある場合、実在確認（大文字小文字無視）
-                if target_music:
-                    for f in all_files:
-                        if f.lower() == target_music.lower():
-                            found_audio = f
-                            break
-                
-                # なければ自動探索
+                found_audio = meta["music_file"]
                 if not found_audio:
                      audio_candidates = [f for f in all_files if f.lower().endswith(('.ogg', '.mp3', '.wav'))]
-                     if audio_candidates:
-                         found_audio = audio_candidates[0]
+                     if audio_candidates: found_audio = audio_candidates[0]
 
+                fmt = "mp3"
                 if found_audio:
-                    meta["music_file"] = found_audio
                     fmt = os.path.splitext(found_audio)[1][1:].lower()
-                else:
-                    meta["music_file"] = ""
-                    fmt = "mp3"
+
+                # ★クリーニング (SMはあまりAnotherがつかないが念のため)
+                clean_title = meta["title"]
+                clean_title = re.sub(r'\s*[\[\(-]?\s*another\s*[\]\)-]?\s*$', '', clean_title, flags=re.IGNORECASE).strip()
 
                 song_list.append({
                     "id": folder,
                     "folder": folder,
-                    "title": meta["title"],
+                    "title": clean_title,
                     "artist": meta["artist"],
                     "bpm": meta["bpm"],
                     "offset": meta["offset"],
                     "difficulties": meta["difficulties"],
-                    "audioFile": meta["music_file"],
+                    "audioFile": found_audio,
                     "format": fmt,
                     "keyCount": 4
                 })
                 print(" OK")
             continue
 
-        # 2. BMSファイル群の処理
+        # 2. BMSファイル群
         if bms_files:
             print(f"Processing BMS Group: {folder} ({len(bms_files)} files) ...", end="")
-            
-            merged_charts = { 
-                "bpm": 130, "offset": 0, "bpmEvents": [], "keyCount": 7
-            }
+            merged_charts = { "bpm": 130, "offset": 0, "bpmEvents": [], "keyCount": 7 }
             difficulties = []
-            
             base_header = None
             
             for bms_file in bms_files:
@@ -383,48 +354,44 @@ def scan_all_songs():
                     merged_charts["bpm"] = header["bpm"]
                     merged_charts["bpmEvents"] = data["bpmEvents"]
                 
-                # 難易度名を推測
                 fname = os.path.basename(bms_file)
                 diff_name = guess_bms_difficulty(fname, header["title"])
-                
-                # 名前が重複した場合の回避策
-                if diff_name in merged_charts:
-                    diff_name += "_2" 
+                if diff_name in merged_charts: diff_name += "_2" 
                 
                 merged_charts[diff_name] = data["notes"]
                 difficulties.append(diff_name)
             
-            # 難易度順ソート
             difficulties.sort(key=lambda d: DIFFICULTY_ORDER.get(d, 99))
             
             if base_header:
                 with open(json_file, 'w', encoding='utf-8') as f:
                     json.dump(merged_charts, f, indent=2)
 
-                # 音声ファイル検索
                 found_audio = None
                 audio_candidates = [f for f in all_files if f.lower().endswith(('.ogg', '.mp3', '.wav'))]
-                # BMSはキー音が多いので、ファイルサイズが大きいものをBGMとして優先的に選ぶロジックなどが本来は必要だが、
-                # ここではとりあえず最初の候補、あるいは "preview" などを除外するなどの工夫が可能。
-                # 今回は単純に見つかった最初の音声ファイルを採用。
                 if audio_candidates:
                     found_audio = audio_candidates[0]
-                    # もし "preview" が含まれていたら、他のを探してみる（簡易的）
                     for aud in audio_candidates:
                         if "preview" not in aud.lower():
                             found_audio = aud
                             break
-
                 fmt = "mp3"
                 if found_audio:
                     fmt = os.path.splitext(found_audio)[1][1:].lower()
                 else:
                     found_audio = ""
 
+                # ★ここでタイトルから "Another" などを削除！
+                clean_title = base_header["title"]
+                # (Another) [ANOTHER] -Another- Another などを末尾から削除
+                clean_title = re.sub(r'\s*[\[\(-]?\s*another\s*[\]\)-]?\s*$', '', clean_title, flags=re.IGNORECASE).strip()
+                # 必要なら他の難易度も消す (例: Hyper, Normal)
+                clean_title = re.sub(r'\s*[\[\(-]?\s*(hyper|normal|beginner|leggendaria)\s*[\]\)-]?\s*$', '', clean_title, flags=re.IGNORECASE).strip()
+
                 song_list.append({
                     "id": folder,
                     "folder": folder,
-                    "title": base_header["title"], 
+                    "title": clean_title, 
                     "artist": base_header["artist"],
                     "bpm": base_header["bpm"],
                     "offset": 0,
@@ -435,13 +402,10 @@ def scan_all_songs():
                 })
                 print(" OK")
             else:
-                print(" Failed (No valid BMS data)")
-        else:
-            print(f"Skipping {folder}: No .sm or .bms files.")
+                print(" Failed")
 
     with open(OUTPUT_LIST, 'w', encoding='utf-8') as f:
         json.dump(song_list, f, indent=2)
-    
     print(f"\nSaved song list to {OUTPUT_LIST}")
 
 if __name__ == '__main__':
