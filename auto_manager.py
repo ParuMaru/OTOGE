@@ -22,10 +22,16 @@ DIFFICULTY_ORDER = {
     "Edit": 5
 }
 
-# 8ボタンモード用レーン定義
+# 7ボタンモード用レーン定義
 BMS_LANE_MAP = {
-    '16': 0, 
-    '11': 1, '12': 2, '13': 3, '14': 4, '15': 5, '18': 6, '19': 7
+    '11': 0, # S
+    '12': 1, # D
+    '13': 2, # F
+    '14': 3, # SPACE (中心)
+    '15': 4, # J
+    '18': 5, # K
+    '19': 6  # L
+    # '16': スクラッチはマップから削除（無視される）
 }
 
 # --- 共通ヘルパー: 難易度名の推定 ---
@@ -362,7 +368,7 @@ def scan_all_songs():
             print(f"Processing BMS Group: {folder} ({len(bms_files)} files) ...", end="")
             
             merged_charts = { 
-                "bpm": 130, "offset": 0, "bpmEvents": [], "keyCount": 8
+                "bpm": 130, "offset": 0, "bpmEvents": [], "keyCount": 7
             }
             difficulties = []
             
@@ -425,7 +431,7 @@ def scan_all_songs():
                     "difficulties": difficulties,
                     "audioFile": found_audio,
                     "format": fmt,
-                    "keyCount": 8
+                    "keyCount": 7
                 })
                 print(" OK")
             else:

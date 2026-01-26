@@ -4,12 +4,36 @@ import { CONFIG } from './constants.js';
 let canvas = null;
 let ctx = null;
 
-// X座標計算（内部利用）
-const getLaneX = (laneIdx) => {
-    const totalWidth = CONFIG.LANE_WIDTH * CONFIG.LANE_COUNT;
-    const startX = (canvas.width - totalWidth) / 2;
-    return startX + laneIdx * CONFIG.LANE_WIDTH;
+// ★追加: レーンごとのX座標と幅を計算する関数
+const getLaneRect = (laneIdx) => {
+    // 比率設定がない場合は均等割り
+    if (!CONFIG.LANE_RATIOS) {
+        const w = CONFIG.LANE_WIDTH; // main.jsで計算された均等幅
+        const totalW = w * CONFIG.LANE_COUNT;
+        const startX = (canvas.width - totalW) / 2;
+        return { x: startX + laneIdx * w, w: w };
+    }
+
+    // 比率設定がある場合 (7Kモードなど)
+    const ratios = CONFIG.LANE_RATIOS;
+    const totalRatio = ratios.reduce((sum, r) => sum + r, 0);
+    
+    // 画面幅いっぱいを使う計算 (必要に応じて最大幅制限を入れてもOK)
+    // ここでは main.js の MAX_GAME_WIDTH ロジックに合わせるため、
+    // 現在の CONFIG.LANE_WIDTH * LANE_COUNT を総幅として扱います
+    const totalGameWidth = CONFIG.LANE_WIDTH * CONFIG.LANE_COUNT; 
+    const unitWidth = totalGameWidth / totalRatio;
+    const startX = (canvas.width - totalGameWidth) / 2;
+
+    let currentX = startX;
+    for (let i = 0; i < laneIdx; i++) {
+        currentX += ratios[i] * unitWidth;
+    }
+    
+    return { x: currentX, w: ratios[laneIdx] * unitWidth };
 };
+
+
 
 // 初期化
 export function initRenderer(canvasElement) {
@@ -38,40 +62,49 @@ function drawField(state) {
     ctx.lineTo(canvas.width, CONFIG.JUDGE_LINE_Y);
     ctx.stroke();
 
-    // レーン区切り線
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= CONFIG.LANE_COUNT; i++) {
-        const x = getLaneX(i);
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-    }
-
-    // レーン発光
+    // レーン描画
+    // 線ではなく「矩形」として処理したほうが可変幅に対応しやすい
     for (let i = 0; i < CONFIG.LANE_COUNT; i++) {
+        const { x, w } = getLaneRect(i);
+        
+        // 区切り線（右端のみ描画）
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + w, 0);
+        ctx.lineTo(x + w, canvas.height);
+        ctx.stroke();
+        
+        // 左端の線 (最初のレーンのみ)
+        if (i === 0) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+
+        // レーン発光
         if (state.laneLights[i] > 0) {
-            const x = getLaneX(i);
             ctx.fillStyle = `rgba(255, 255, 255, ${state.laneLights[i] * 0.4})`;
-            ctx.fillRect(x, 0, CONFIG.LANE_WIDTH, canvas.height);
+            ctx.fillRect(x, 0, w, canvas.height);
             
-            // グラデーション
             const grad = ctx.createLinearGradient(x, CONFIG.JUDGE_LINE_Y - 50, x, CONFIG.JUDGE_LINE_Y + 50);
             grad.addColorStop(0, `rgba(0, 255, 255, 0)`);
             grad.addColorStop(0.5, `rgba(0, 255, 255, ${state.laneLights[i]})`);
             grad.addColorStop(1, `rgba(0, 255, 255, 0)`);
             ctx.fillStyle = grad;
-            ctx.fillRect(x, CONFIG.JUDGE_LINE_Y - 50, CONFIG.LANE_WIDTH, 100);
+            ctx.fillRect(x, CONFIG.JUDGE_LINE_Y - 50, w, 100);
         }
-    }
 
-    // キー文字
-    ctx.fillStyle = '#888';
-    ctx.font = '16px Arial';
-    CONFIG.KEYS.forEach((key, i) => {
-        ctx.fillText(key.toUpperCase(), getLaneX(i) + CONFIG.LANE_WIDTH/2 - 5, CONFIG.JUDGE_LINE_Y + 40);
-    });
+        // キー文字
+        ctx.fillStyle = '#888';
+        ctx.font = '16px Arial';
+        // スペースキーの表示調整
+        let keyText = CONFIG.KEYS[i].toUpperCase();
+        if(keyText === ' ') keyText = 'SPC';
+        
+        ctx.fillText(keyText, x + w/2 - 10, CONFIG.JUDGE_LINE_Y + 40);
+    }
 }
 
 
@@ -109,8 +142,7 @@ function drawNotes(state) {
         }
 
         // --- 以下、描画処理（変更なし） ---
-        const x = getLaneX(note.lane);
-        const w = CONFIG.LANE_WIDTH;
+        const { x, w } = getLaneRect(note.lane);
         const h = 20;
 
         // ロングノーツ描画
@@ -133,7 +165,25 @@ function drawNotes(state) {
 
         // 通常ノーツ描画
         if (yHead > -50 && yHead < canvas.height + 50) {
+            // デフォルト色
             ctx.fillStyle = note.duration > 0 ? '#00cc00' : '#ff0055';
+
+            // ★7キーモード時の色分け処理
+            if (CONFIG.LANE_COUNT === 7) {
+                // インデックス1(2番目:D) と インデックス5(6番目:K) を青にする
+                if (note.lane === 1 || note.lane === 5) {
+                    ctx.fillStyle = '#00ffff'; // シアン(青)
+                } 
+                // 真ん中(SPACE)はオレンジ
+                else if (note.lane === 3) {
+                    ctx.fillStyle = '#ffaa00'; 
+                }
+                // その他(S,F,J,L)はデフォルト(赤)のまま
+                else if (note.duration === 0) {
+                    ctx.fillStyle = '#ff0055'; // 赤
+                }
+            }
+
             ctx.fillRect(x + 2, yHead - h/2, w - 4, h);
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
@@ -199,15 +249,18 @@ function drawJudgeUI(state) {
 
 //爆発エフェクト
 function drawEffects(state) {
-    //  オフセット考慮
     const currentSongTime = (state.audioCtx.currentTime - state.startTime) - (state.globalOffset || 0);
     
     state.hitEffects.forEach(effect => {
         const elapsed = currentSongTime - effect.startTime;
         const progress = elapsed / effect.duration;
-        const x = getLaneX(effect.lane) + CONFIG.LANE_WIDTH / 2;
+        
+        // ★変更: getLaneRect使用
+        const { x, w } = getLaneRect(effect.lane);
+        const centerX = x + w / 2;
         const y = CONFIG.JUDGE_LINE_Y;
-        const size = 40 + progress * 80; 
+        
+        const size = (40 + progress * 80) * (w / CONFIG.LANE_WIDTH); // 幅に応じてエフェクトサイズも調整
         const alpha = (1.0 - progress) * 0.6;
 
         ctx.save();
@@ -215,8 +268,8 @@ function drawEffects(state) {
         ctx.strokeStyle = `rgba(255, 220, 100, ${alpha})`;
         ctx.lineWidth = 4 * (1 - progress);
         ctx.beginPath();
-        ctx.strokeRect(x - size / 2, y - size / 2, size, size);
-        ctx.translate(x, y);
+        ctx.strokeRect(centerX - size / 2, y - size / 2, size, size);
+        ctx.translate(centerX, y);
         ctx.rotate(progress * Math.PI / 2);
         ctx.strokeStyle = `rgba(255, 100, 50, ${alpha * 0.5})`;
         ctx.strokeRect(-size/3, -size/3, size*2/3, size*2/3);

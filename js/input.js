@@ -13,10 +13,51 @@ import {
 // タッチ識別用マップ
 const touchMap = {};
 
+//  可変幅対応のタッチ判定ヘルパー
+function getLaneFromTouch(touch, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const relativeX = (touch.clientX - rect.left); // ピクセル座標
+    
+    // rendererと同じ計算ロジックが必要（簡易的に再計算）
+    // 本来はrendererからexportして共有するのがベストですが、ここではロジックを再現します
+    const totalW = CONFIG.LANE_WIDTH * CONFIG.LANE_COUNT;
+    const startX = (canvas.width - totalW) / 2;
+    
+    // タッチ位置がフィールド外なら -1
+    if (relativeX < startX || relativeX > startX + totalW) return -1;
+    
+    const localX = relativeX - startX;
+    
+    if (!CONFIG.LANE_RATIOS) {
+        // 均等モード
+        return Math.floor(localX / CONFIG.LANE_WIDTH);
+    } else {
+        // 7K可変幅モード
+        const ratios = CONFIG.LANE_RATIOS;
+        const totalRatio = ratios.reduce((a,b)=>a+b, 0);
+        const unitWidth = totalW / totalRatio;
+        
+        let currentPos = 0;
+        for (let i = 0; i < CONFIG.LANE_COUNT; i++) {
+            const w = ratios[i] * unitWidth;
+            if (localX >= currentPos && localX < currentPos + w) {
+                return i;
+            }
+            currentPos += w;
+        }
+    }
+    return -1;
+}
+
 export function initInput(canvas) {
     // キーボード
     window.addEventListener('keydown', e => {
         if (state.currentScene === 'game' && e.repeat) return;
+        
+        //  スペースキーのスクロール防止
+        if (e.key === ' ') {
+            e.preventDefault();
+        }
         
         // キャリブレーション中の操作
         if (state.currentScene === 'calibration') {
@@ -74,7 +115,7 @@ function setupTouchEvents(canvas) {
 
         for (let i = 0; i < e.changedTouches.length; i++) {
             const touch = e.changedTouches[i];
-            const lane = getLaneFromTouch(touch);
+            const lane = getLaneFromTouch(touch, canvas);
             if (lane !== -1 && lane < CONFIG.LANE_COUNT) {
                 state.keyState[lane] = false;
                 touchMap[touch.identifier] = lane;

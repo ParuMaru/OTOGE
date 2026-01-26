@@ -58,7 +58,7 @@ export function toTitle() {
         .catch(err => { console.error("Song list load failed:", err); });
 
     const btn4k = document.getElementById('btn-mode-4k');
-    const btn8k = document.getElementById('btn-mode-8k');
+    const btn7k = document.getElementById('btn-mode-7k');
 
     if (btn4k) {
         btn4k.onclick = () => {
@@ -68,11 +68,11 @@ export function toTitle() {
             toSelect();
         };
     }
-    if (btn8k) {
-        btn8k.onclick = () => {
+    if (btn7k) {
+        btn7k.onclick = () => {
             state.audioCtx = initAudio(); 
-            state.gameMode = '8K';
-            configureGameMode('8K');
+            state.gameMode = '7K';
+            configureGameMode('7K');
             
             window.dispatchEvent(new Event('resize')); 
             
@@ -194,7 +194,7 @@ export function toSelect() {
     // 曲リストの生成
     globalSongList.forEach(song => {
         const songKeyCount = song.keyCount || 4;
-        const currentKeyCount = (state.gameMode === '8K') ? 8 : 4;
+        const currentKeyCount = (state.gameMode === '7K') ? 7 : 4;
 
         if (songKeyCount !== currentKeyCount) return;
 
