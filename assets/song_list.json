@@ -60,6 +60,22 @@
     "keyCount": 4
   },
   {
+    "id": "Doppelganger",
+    "folder": "Doppelganger",
+    "title": "Doppelganger[ANOTHER]",
+    "artist": "LeaF",
+    "bpm": 280.0,
+    "offset": 0,
+    "difficulties": [
+      "Normal",
+      "Hyper",
+      "Another"
+    ],
+    "audioFile": "Doppelganger.ogg",
+    "format": "ogg",
+    "keyCount": 7
+  },
+  {
     "id": "Forest of Clock",
     "folder": "Forest of Clock",
     "title": "Forest of Clock",
@@ -149,6 +165,23 @@
     "audioFile": "The Oath.ogg",
     "format": "ogg",
     "keyCount": 4
+  },
+  {
+    "id": "\u3082\u307a\u3082\u307a",
+    "folder": "\u3082\u307a\u3082\u307a",
+    "title": "\u3082\u307a\u3082\u307a[ANOTHER]",
+    "artist": "LeaF",
+    "bpm": 100.0,
+    "offset": 0,
+    "difficulties": [
+      "Normal",
+      "Hyper",
+      "Another",
+      "Insane"
+    ],
+    "audioFile": "\u3082\u307a\u3082\u307a.ogg",
+    "format": "ogg",
+    "keyCount": 7
   },
   {
     "id": "\u6708\u3068\u72fc",

@@ -45,17 +45,24 @@ export const state = {
     }
 };
 
-// ゲーム開始時にリセットする関数
+// ゲーム開始時にリセットする関数（強化版）
 export function resetGameState() {
     state.score = 0;
     state.combo = 0;
     state.maxCombo = 0;
     state.judgeCounts = { perfect: 0, great: 0, good: 0, miss: 0 };
+    
+    state.notes = []; // ノーツも一旦空にする
     state.hitEffects = [];
+    state.laneLights = [0, 0, 0, 0, 0, 0, 0, 0]; 
+    
     state.lastJudge = { text: '', time: -10, color: '#fff', timing: '' };
-    state.laneLights = [0, 0, 0, 0];
     state.isWaitingStart = true;
-    state.isPlaying = true;
-    state.isInputFinished = false;
+    state.isPlaying = true; // ループを回すためにtrueにする
+    
+    state.isInputFinished = false; // 終了フラグを確実に下ろす
     state.hasPlayedFinishEffect = false;
+    
+    // キー入力状態もクリア
+    state.keyState = state.keyState.map(() => false);
 }

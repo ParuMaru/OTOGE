@@ -250,6 +250,7 @@ export function toSelect() {
 
 // --- GAME START ---
 export async function startGame(songData, difficulty = 'Hard') {
+    
     state.selectedSong = songData; 
     state.selectedDifficulty = difficulty;
     
@@ -323,6 +324,7 @@ export async function startGame(songData, difficulty = 'Hard') {
 // --- RESULT SCENE ---
 export function finishGame() {
     state.isPlaying = false;
+    stopMusic();
     switchScene('result');
 
     const rank = getRank(state.score);
