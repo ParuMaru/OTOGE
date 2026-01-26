@@ -3,55 +3,81 @@
     "id": "AAAAA",
     "folder": "AAAAA",
     "title": "TEST",
+    "artist": "",
     "bpm": 158.0,
     "offset": -0.355011,
     "difficulties": [
       "Beginner"
     ],
+    "audioFile": "AAAAA.mp3",
     "format": "mp3",
-    "audioFile": "AAAAA.mp3"
+    "keyCount": 4
+  },
+  {
+    "id": "Alice in Misanthrope -\u53ad\u4e16\u30a2\u30ea\u30b9-",
+    "folder": "Alice in Misanthrope -\u53ad\u4e16\u30a2\u30ea\u30b9-",
+    "title": "Alice in Misanthrope -\u53ad\u4e16\u30a2\u30ea\u30b9-[ANOTHER]",
+    "artist": "LeaF",
+    "bpm": 172.0,
+    "offset": 0,
+    "difficulties": [
+      "Normal",
+      "Hyper",
+      "Another",
+      "Insane"
+    ],
+    "audioFile": "Alice in Misanthrope -\u53ad\u4e16\u30a2\u30ea\u30b9-.ogg",
+    "format": "ogg",
+    "keyCount": 8
   },
   {
     "id": "Annihilation in F# Minor",
     "folder": "Annihilation in F# Minor",
     "title": "Annihilation in F# Minor",
+    "artist": "",
     "bpm": 150.0,
     "offset": -0.404687,
     "difficulties": [
       "Hard"
     ],
+    "audioFile": "Annihilation in F# Minor.ogg",
     "format": "ogg",
-    "audioFile": "Annihilation in F# Minor.ogg"
+    "keyCount": 4
   },
   {
     "id": "Burning Heart",
     "folder": "Burning Heart",
     "title": "Burning Heart",
+    "artist": "",
     "bpm": 142.0,
     "offset": -0.030023,
     "difficulties": [
       "Easy",
       "Hard"
     ],
+    "audioFile": "Burning Heart.mp3",
     "format": "mp3",
-    "audioFile": "Burning Heart.mp3"
+    "keyCount": 4
   },
   {
     "id": "Forest of Clock",
     "folder": "Forest of Clock",
     "title": "Forest of Clock",
+    "artist": "",
     "bpm": 175.0,
     "offset": -0.068186,
     "difficulties": [
       "Hard"
     ],
+    "audioFile": "Forest of Clock.mp3",
     "format": "mp3",
-    "audioFile": "Forest of Clock.mp3"
+    "keyCount": 4
   },
   {
     "id": "GOODWORLD",
     "folder": "GOODWORLD",
     "title": "GOODWORLD",
+    "artist": "Unknown artist",
     "bpm": 165.0,
     "offset": -0.306032,
     "difficulties": [
@@ -59,58 +85,84 @@
       "Hard",
       "Challenge"
     ],
+    "audioFile": "GOODWORLD.ogg",
     "format": "ogg",
-    "audioFile": "GOODWORLD.ogg"
+    "keyCount": 4
   },
   {
     "id": "halzion",
     "folder": "halzion",
     "title": "\u30cf\u30eb\u30b8\u30aa\u30f3",
+    "artist": "",
     "bpm": 152.0,
     "offset": -0.030662,
     "difficulties": [
       "Medium",
       "Hard"
     ],
+    "audioFile": "halzion.mp3",
     "format": "mp3",
-    "audioFile": "halzion.mp3"
+    "keyCount": 4
+  },
+  {
+    "id": "Lyrith -\u8ff7\u5bae\u30ea\u30ea\u30b9-",
+    "folder": "Lyrith -\u8ff7\u5bae\u30ea\u30ea\u30b9-",
+    "title": "Lyrith -\u8ff7\u5bae\u30ea\u30ea\u30b9-[ANOTHER]",
+    "artist": "\u30e6\u30e1\u30df\u30c9",
+    "bpm": 177.0,
+    "offset": 0,
+    "difficulties": [
+      "Normal",
+      "Hyper",
+      "Another",
+      "Insane"
+    ],
+    "audioFile": "Lyrith -\u8ff7\u5bae\u30ea\u30ea\u30b9-.ogg",
+    "format": "ogg",
+    "keyCount": 8
   },
   {
     "id": "shining_star",
     "folder": "shining_star",
     "title": "\u30b7\u30e3\u30a4\u30cb\u30f3\u30b0\u30b9\u30bf\u30fc",
+    "artist": "",
     "bpm": 158.0,
     "offset": -0.029615,
     "difficulties": [
       "Medium",
       "Hard"
     ],
+    "audioFile": "shining_star.mp3",
     "format": "mp3",
-    "audioFile": "shining_star.mp3"
+    "keyCount": 4
   },
   {
     "id": "The Oath",
     "folder": "The Oath",
     "title": "The Oath",
+    "artist": "",
     "bpm": 132.0,
     "offset": -0.207648,
     "difficulties": [
       "Hard"
     ],
+    "audioFile": "The Oath.ogg",
     "format": "ogg",
-    "audioFile": "The Oath.ogg"
+    "keyCount": 4
   },
   {
     "id": "\u6708\u3068\u72fc",
     "folder": "\u6708\u3068\u72fc",
     "title": "\u6708\u3068\u72fc",
+    "artist": "",
     "bpm": 158.0,
     "offset": 0.0,
     "difficulties": [
       "Easy",
       "Hard"
     ],
+    "audioFile": "\u6708\u3068\u72fc.mp3",
     "format": "mp3",
-    "audioFile": "\u6708\u3068\u72fc.mp3"
+    "keyCount": 4
   }
 ]

@@ -1,6 +1,6 @@
 // js/scene.js
 import { state, resetGameState } from './state.js';
-import { CONFIG } from './constants.js';
+import { CONFIG, configureGameMode } from './constants.js';
 import { initAudio, loadAudio, stopMusic, playSound } from './audio.js';
 
 // DOM要素
@@ -17,10 +17,10 @@ const uiScore = document.getElementById('score');
 // 曲リストデータ
 let globalSongList = [];
 
-// スコア保存用キー生成ヘルパー
-const getScoreKey = (folder, difficulty) => `rhythmGame_score_${folder}_${difficulty}`;
+// ★変更: スコア保存用キーに「モード(4K/8K)」を含める
+const getScoreKey = (folder, difficulty, mode) => `rhythmGame_score_${folder}_${difficulty}_${mode}`;
 
-// ★追加: ランク計算ヘルパー関数
+// ランク計算ヘルパー関数
 function getRank(score) {
     if (score >= 990000) return 'SSS';
     if (score >= 950000) return 'SS';
@@ -30,7 +30,7 @@ function getRank(score) {
     return 'C';
 }
 
-// ★追加: ランクごとの色定義
+// ランクごとの色定義
 function getRankColor(rank) {
     switch(rank) {
         case 'SSS': return '#ffd700'; // 金
@@ -57,20 +57,25 @@ export function toTitle() {
         .then(data => { globalSongList = data; })
         .catch(err => { console.error("Song list load failed:", err); });
 
-    const btnBeginner = document.getElementById('btn-beginner');
-    const btnNormal = document.getElementById('btn-normal');
+    const btn4k = document.getElementById('btn-mode-4k');
+    const btn8k = document.getElementById('btn-mode-8k');
 
-    if (btnBeginner) {
-        btnBeginner.onclick = () => {
+    if (btn4k) {
+        btn4k.onclick = () => {
             state.audioCtx = initAudio(); 
-            state.gameMode = 'beginner'; 
+            state.gameMode = '4K';
+            configureGameMode('4K');
             toSelect();
         };
     }
-    if (btnNormal) {
-        btnNormal.onclick = () => {
+    if (btn8k) {
+        btn8k.onclick = () => {
             state.audioCtx = initAudio(); 
-            state.gameMode = 'normal';   
+            state.gameMode = '8K';
+            configureGameMode('8K');
+            
+            window.dispatchEvent(new Event('resize')); 
+            
             toSelect();
         };
     }
@@ -87,10 +92,18 @@ export function toSelect() {
     const settingPanel = document.getElementById('setting-panel');
     settingPanel.innerHTML = ''; 
 
+    // 現在のモード表示
+    const modeLabel = document.createElement('h3');
+    modeLabel.style.margin = '5px 0';
+    modeLabel.style.color = '#aaa';
+    modeLabel.style.textAlign = 'center';
+    modeLabel.innerText = `MODE: ${state.gameMode}`;
+    settingPanel.appendChild(modeLabel);
+
     const storageKey = `rhythmGame_speed_${state.gameMode}`;
     const savedSpeed = localStorage.getItem(storageKey);
     if (savedSpeed) state.greenNumber = parseInt(savedSpeed);
-    else state.greenNumber = (state.gameMode === 'beginner') ? 800 : 500;
+    else state.greenNumber = (state.gameMode === '4K') ? 500 : 500;
 
     // UI構築
     const labelContainer = document.createElement('div');
@@ -143,7 +156,7 @@ export function toSelect() {
     const autoBtn = document.createElement('button');
     autoBtn.className = 'setting-btn';
     const updateAutoBtn = () => {
-        autoBtn.innerText = state.isAuto ? 'AUTO' : 'AUTO';
+        autoBtn.innerText = state.isAuto ? 'AUTO: ON' : 'AUTO: OFF';
         autoBtn.style.borderColor = state.isAuto ? '#ff0' : '#888';
         autoBtn.style.color = state.isAuto ? '#ff0' : '#888';
     };
@@ -178,14 +191,15 @@ export function toSelect() {
     const listContainer = document.getElementById('song-list');
     listContainer.innerHTML = ''; 
     
+    // 曲リストの生成
     globalSongList.forEach(song => {
-        let diffs = song.difficulties || ['Hard'];
-        if (state.gameMode === 'beginner') {
-            const allowed = ['Beginner', 'Easy', 'Medium', 'Hard'];
-            diffs = diffs.filter(d => allowed.includes(d));
-            if (diffs.length === 0) return;
-        }
+        const songKeyCount = song.keyCount || 4;
+        const currentKeyCount = (state.gameMode === '8K') ? 8 : 4;
 
+        if (songKeyCount !== currentKeyCount) return;
+
+        let diffs = song.difficulties || ['Hard'];
+        
         const songRow = document.createElement('div');
         songRow.className = 'song-row';
         
@@ -204,14 +218,13 @@ export function toSelect() {
             btn.className = 'song-btn';
             btn.style.flex = '1';
             
-            // ★修正: スコアとランクの表示
-            const savedData = JSON.parse(localStorage.getItem(getScoreKey(song.folder, diffName)));
+            // ★変更: 読み込み時もモードを指定してスコア取得
+            const savedData = JSON.parse(localStorage.getItem(getScoreKey(song.folder, diffName, state.gameMode)));
             
             let labelHtml = `<div>${diffName}</div>`;
             if (savedData && savedData.score > 0) {
                 const scoreStr = Math.round(savedData.score).toString().padStart(7, '0');
                 
-                // データにランクがなければ計算する（後方互換性）
                 const rank = savedData.rank || getRank(savedData.score);
                 const rankColor = getRankColor(rank);
 
@@ -272,7 +285,7 @@ export async function startGame(songData, difficulty = 'Hard') {
         }
 
         let targetNotes = chartData[difficulty];
-        if (!targetNotes) targetNotes = Object.values(chartData)[0];
+        if (!targetNotes) targetNotes = Object.values(chartData).find(val => Array.isArray(val)) || [];
 
         state.songOffset = (chartData.offset !== undefined) ? chartData.offset : (songData.offset || 0);
         state.currentBpm = chartData.bpm || songData.bpm;
@@ -312,31 +325,26 @@ export function finishGame() {
     state.isPlaying = false;
     switchScene('result');
 
-    // ★修正: ランク計算をヘルパー関数に委譲
     const rank = getRank(state.score);
-
     const isFullCombo = state.judgeCounts.miss === 0 && state.notes.length > 0;
     const isAllPerfect = isFullCombo && state.judgeCounts.great === 0 && state.judgeCounts.good === 0;
 
-    // ★修正: ランク情報も保存
+    // ★変更: スコア保存時もモードを指定
     if (!state.isAuto && state.selectedSong) {
-        const key = getScoreKey(state.selectedSong.folder, state.selectedDifficulty);
+        const key = getScoreKey(state.selectedSong.folder, state.selectedDifficulty, state.gameMode);
         const oldData = JSON.parse(localStorage.getItem(key)) || { score: 0, isFC: false, isAP: false };
         
         const finalScore = Math.round(state.score);
         
-        // ハイスコア更新時、またはスコアが同じでも新しい方がランクが良い場合(ありえないが念のため)にデータを更新
-        // 基本はスコアが高い方を保存
         if (finalScore >= oldData.score) {
             const newData = {
                 score: finalScore,
-                rank: rank, // ★ランク保存
+                rank: rank, 
                 isFC: oldData.isFC || isFullCombo,
                 isAP: oldData.isAP || isAllPerfect
             };
             localStorage.setItem(key, JSON.stringify(newData));
         } else {
-             // スコアは更新していないが、FC/APランプがついた場合のみ更新
              if ((isFullCombo && !oldData.isFC) || (isAllPerfect && !oldData.isAP)) {
                  const newData = { ...oldData, isFC: oldData.isFC || isFullCombo, isAP: oldData.isAP || isAllPerfect };
                  localStorage.setItem(key, JSON.stringify(newData));

@@ -1,4 +1,3 @@
-// js/renderer.js
 
 import { CONFIG } from './constants.js';
 
@@ -77,7 +76,7 @@ function drawField(state) {
 
 
 function drawNotes(state) {
-    // ★変更: オフセットを考慮した現在時間
+    //  オフセットを考慮した現在時間
     const currentSongTime = (state.audioCtx.currentTime - state.startTime) - (state.globalOffset || 0);
     
     //  現在の「距離」を取得
@@ -144,7 +143,7 @@ function drawNotes(state) {
 }
 
 function drawJudgeUI(state) {
-    // ★変更: オフセット考慮
+    //  オフセット考慮
     const currentSongTime = (state.audioCtx.currentTime - state.startTime) - (state.globalOffset || 0);
     
     const timeDiff = currentSongTime - state.lastJudge.time;
@@ -200,7 +199,7 @@ function drawJudgeUI(state) {
 
 //爆発エフェクト
 function drawEffects(state) {
-    // ★変更: オフセット考慮
+    //  オフセット考慮
     const currentSongTime = (state.audioCtx.currentTime - state.startTime) - (state.globalOffset || 0);
     
     state.hitEffects.forEach(effect => {
