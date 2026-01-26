@@ -12,6 +12,18 @@
     "audioFile": "AAAAA.mp3"
   },
   {
+    "id": "Annihilation in F# Minor",
+    "folder": "Annihilation in F# Minor",
+    "title": "Annihilation in F# Minor",
+    "bpm": 150.0,
+    "offset": -0.404687,
+    "difficulties": [
+      "Hard"
+    ],
+    "format": "ogg",
+    "audioFile": "Annihilation in F# Minor.ogg"
+  },
+  {
     "id": "Burning Heart",
     "folder": "Burning Heart",
     "title": "Burning Heart",
