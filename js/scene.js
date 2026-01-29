@@ -1,4 +1,3 @@
-// js/scene.js
 import { state, resetGameState } from './state.js';
 import { CONFIG, configureGameMode } from './constants.js';
 import { initAudio, loadAudio, stopMusic, playSound } from './audio.js';
@@ -359,7 +358,7 @@ export function finishGame() {
     const isFullCombo = state.judgeCounts.miss === 0 && state.notes.length > 0;
     const isAllPerfect = isFullCombo && state.judgeCounts.great === 0 && state.judgeCounts.good === 0;
 
-    // ★変更: スコア保存時もモードを指定
+    // スコア保存時もモードを指定
     if (!state.isAuto && state.selectedSong) {
         const key = getScoreKey(state.selectedSong.folder, state.selectedDifficulty, state.gameMode);
         const oldData = JSON.parse(localStorage.getItem(key)) || { score: 0, isFC: false, isAP: false };

@@ -35,8 +35,6 @@ export function stopMusic() {
         try {
             bgmSource.stop();
         } catch (e) {
-            // 再生前や既に停止済みの場合にエラーが出ることがあるが、
-            // 音楽を止めることが目的なので、失敗しても無視してOK
             console.warn("Music stop error (ignored):", e);
         }
         bgmSource = null;

@@ -1,13 +1,10 @@
-// js/state.js
-
-// ローカルストレージからオフセット初期値を読み込み
 const savedOffset = localStorage.getItem('rhythmGame_offset');
 const initialOffset = savedOffset ? parseFloat(savedOffset) : 0.0;
 
 export const state = {
     currentScene: 'title',
     selectedSong: null,
-    selectedDifficulty: null, // ★追加: 現在プレイ中の難易度を記録
+    selectedDifficulty: null, 
     isPlaying: false,
     startTime: 0,
     score: 0,
@@ -32,7 +29,7 @@ export const state = {
     currentBpm: 0,
     bpmEvents: [],
     isInputFinished: false,
-    hasPlayedFinishEffect: false, // ★念のためここにも定義しておきます
+    hasPlayedFinishEffect: false, 
 
     calibData: {
         active: false,
@@ -45,7 +42,7 @@ export const state = {
     }
 };
 
-// ゲーム開始時にリセットする関数（強化版）
+// ゲーム開始時にリセットする関数
 export function resetGameState() {
     state.score = 0;
     state.combo = 0;

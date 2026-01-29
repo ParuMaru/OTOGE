@@ -1,4 +1,3 @@
-// js/renderer.js
 import { CONFIG } from './constants.js';
 
 let canvas = null;

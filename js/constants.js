@@ -23,7 +23,7 @@ export const JUDGE_RANGES = {
 };
 
 export function configureGameMode(mode) {
-    if (mode === '7K') { // 8Kを7Kに変更
+    if (mode === '7K') { 
         // --- 7ボタン (SDF SPACE JKL) ---
         CONFIG.LANE_COUNT = 7;
         // キー配置: スペースキーは ' '
