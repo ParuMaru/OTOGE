@@ -160,7 +160,7 @@ function drawNotes(state) {
                 if (note.lane === 1 || note.lane === 5) {
                     ctx.fillStyle = '#00ffff'; // シアン(青)
                 } else if (note.lane === 3) {
-                    ctx.fillStyle = '#ffaa00'; // 真ん中(SPACE)
+                    ctx.fillStyle = '#00ffff'; // 真ん中(SPACE)
                 } else if (note.duration === 0) {
                     ctx.fillStyle = '#ff0055'; // 通常
                 }
