@@ -189,6 +189,8 @@ def convert_sm_to_json(sm_path):
         parsed_notes.sort(key=lambda x: x['time'])
         charts[diff_name] = parsed_notes
 
+        difficulty_list.sort(key=lambda d: DIFFICULTY_ORDER.get(d.title(), 99))
+
     metadata = {
         "title": title,
         "artist": artist,

@@ -218,7 +218,7 @@ export function toSelect() {
             btn.className = 'song-btn';
             btn.style.flex = '1';
             
-            // ★変更: 読み込み時もモードを指定してスコア取得
+            // 読み込み時もモードを指定してスコア取得
             const savedData = JSON.parse(localStorage.getItem(getScoreKey(song.folder, diffName, state.gameMode)));
             
             let labelHtml = `<div>${diffName}</div>`;
@@ -261,7 +261,6 @@ export async function startGame(songData, difficulty = 'Hard') {
     // リトライ時などは現在のシーンを取得
     const loadingContainer = document.getElementById(state.currentScene) || overlay;
     
-    // 簡易ローディング表示（コンソールに出す）
     console.log("Loading game...");
 
     try {
@@ -277,7 +276,6 @@ export async function startGame(songData, difficulty = 'Hard') {
         
         // ... (BPMイベント処理はそのまま) ...
         if (chartData.bpmEvents) {
-            // (省略: 元のコードのまま)
             let accumulatedY = 0;
             for (let i = 0; i < chartData.bpmEvents.length; i++) {
                 const evt = chartData.bpmEvents[i];
