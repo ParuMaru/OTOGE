@@ -322,7 +322,7 @@ export async function startGame(songData, difficulty = 'Hard') {
         if (state.bpmEvents) {
             
             state.bpmEvents.forEach(evt => {
-                if (evt.bpm > maxBpm && evt.bpm < 500) { // 500未満のものだけ採用
+                if (evt.bpm > maxBpm && evt.bpm < 400) { // 400未満のものだけ採用
                     maxBpm = evt.bpm; 
                 }
             });
