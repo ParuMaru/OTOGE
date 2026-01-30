@@ -1,3 +1,4 @@
+// js/scene.js
 import { state, resetGameState } from './state.js';
 import { CONFIG, configureGameMode } from './constants.js';
 import { initAudio, loadAudio, stopMusic, playSound } from './audio.js';
@@ -217,7 +218,7 @@ export function toSelect() {
             btn.className = 'song-btn';
             btn.style.flex = '1';
             
-            // 読み込み時もモードを指定してスコア取得
+            // ★変更: 読み込み時もモードを指定してスコア取得
             const savedData = JSON.parse(localStorage.getItem(getScoreKey(song.folder, diffName, state.gameMode)));
             
             let labelHtml = `<div>${diffName}</div>`;
@@ -260,6 +261,7 @@ export async function startGame(songData, difficulty = 'Hard') {
     // リトライ時などは現在のシーンを取得
     const loadingContainer = document.getElementById(state.currentScene) || overlay;
     
+    // 簡易ローディング表示（コンソールに出す）
     console.log("Loading game...");
 
     try {
@@ -275,6 +277,7 @@ export async function startGame(songData, difficulty = 'Hard') {
         
         // ... (BPMイベント処理はそのまま) ...
         if (chartData.bpmEvents) {
+            // (省略: 元のコードのまま)
             let accumulatedY = 0;
             for (let i = 0; i < chartData.bpmEvents.length; i++) {
                 const evt = chartData.bpmEvents[i];
@@ -318,19 +321,42 @@ export async function startGame(songData, difficulty = 'Hard') {
         state.musicDuration = musicBuffer.duration;
         
         // スピード倍率計算
-        let maxBpm = songData.bpm || 150; 
+        // 1. 各BPMが「合計で何秒間流れているか」を計算する
+        const bpmDurations = {};
+        const songEndTime = state.musicDuration || 300; // 曲の長さ（取得できなければ仮で300秒）
+
         if (state.bpmEvents) {
-            
-            state.bpmEvents.forEach(evt => {
-                if (evt.bpm > maxBpm && evt.bpm < 400) { // 400未満のものだけ採用
-                    maxBpm = evt.bpm; 
+            state.bpmEvents.forEach((evt, index) => {
+                const nextEvt = state.bpmEvents[index + 1];
+                // 次のイベントまでの時間が、そのBPMの持続時間
+                const duration = (nextEvt ? nextEvt.time : songEndTime) - evt.time;
+                
+                // 異常値や停止(0)は除外
+                if (evt.bpm > 0 && evt.bpm < 1000) { 
+                    bpmDurations[evt.bpm] = (bpmDurations[evt.bpm] || 0) + duration;
                 }
             });
-            
         }
-        const baseScale = 4.0;
-        state.speedMultiplier = (CONFIG.JUDGE_LINE_Y * 1000) / (state.greenNumber * maxBpm * baseScale);
 
+        // 2. 最も長く使われているBPM（Main BPM）を探す
+        let mainBpm = songData.bpm || 150;
+        let maxDuration = 0;
+
+        for (const [bpmStr, duration] of Object.entries(bpmDurations)) {
+            if (duration > maxDuration) {
+                maxDuration = duration;
+                mainBpm = parseFloat(bpmStr);
+            }
+        }
+
+        // 念のため、見つからなかった場合や極端に遅い場合は初期値を採用などの保険を入れても良い
+        if (mainBpm < 10) mainBpm = songData.bpm || 150;
+
+        // 3. 計算には mainBpm を使用する
+        const baseScale = 4.0;
+        // ★ maxBpm ではなく mainBpm を使う
+        state.speedMultiplier = (CONFIG.JUDGE_LINE_Y * 1000) / (state.greenNumber * mainBpm * baseScale);
+     
         // 画面切り替え
         switchScene('game');
 
@@ -358,7 +384,7 @@ export function finishGame() {
     const isFullCombo = state.judgeCounts.miss === 0 && state.notes.length > 0;
     const isAllPerfect = isFullCombo && state.judgeCounts.great === 0 && state.judgeCounts.good === 0;
 
-    // スコア保存時もモードを指定
+    // ★変更: スコア保存時もモードを指定
     if (!state.isAuto && state.selectedSong) {
         const key = getScoreKey(state.selectedSong.folder, state.selectedDifficulty, state.gameMode);
         const oldData = JSON.parse(localStorage.getItem(key)) || { score: 0, isFC: false, isAP: false };
