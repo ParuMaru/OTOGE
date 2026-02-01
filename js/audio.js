@@ -1,4 +1,3 @@
-// js/audio.js
 
 let audioCtx = null;
 let bgmSource = null;
@@ -33,12 +32,16 @@ export function playMusic(buffer) {
 
 export function stopMusic() {
     if (bgmSource) {
-        bgmSource.stop();
+        try {
+            bgmSource.stop();
+        } catch (e) {
+            console.warn("Music stop error (ignored):", e);
+        }
         bgmSource = null;
     }
 }
 
-// ★修正: 引数 type に応じて音程を変える
+//  引数 type に応じて音程を変える
 export function playSound(type) {
     if (!audioCtx) return;
     const osc = audioCtx.createOscillator();
@@ -60,7 +63,7 @@ export function playSound(type) {
         osc.stop(t + 0.1);
 
     } else if (type === 'beat_low') {
-        // 「ぽ」（低いクリック音）
+        // （低いクリック音）
         osc.type = 'square';
         osc.frequency.setValueAtTime(440, t); // 440Hz (A4)
         gain.gain.setValueAtTime(0.1, t);
@@ -69,7 +72,7 @@ export function playSound(type) {
         osc.stop(t + 0.05);
 
     } else if (type === 'beat_high') {
-        // 「ピーン」（高いアクセント音）
+        // （高いアクセント音）
         osc.type = 'square';
         osc.frequency.setValueAtTime(880, t); // 880Hz (A5)
         gain.gain.setValueAtTime(0.1, t);

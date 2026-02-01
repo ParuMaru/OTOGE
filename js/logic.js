@@ -1,4 +1,3 @@
-// js/logic.js
 import { state } from './state.js';
 import { CONFIG, JUDGE_RANGES } from './constants.js';
 import { playSound, playMusic } from './audio.js';
