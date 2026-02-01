@@ -31,16 +31,16 @@
     "keyCount": 7
   },
   {
-    "id": "Annihilation in F# Minor",
-    "folder": "Annihilation in F# Minor",
-    "title": "Annihilation in F# Minor",
+    "id": "Annihilation_in_F_Minor",
+    "folder": "Annihilation_in_F_Minor",
+    "title": "Annihilation in F# Minor(譜面未完成)",
     "artist": "",
     "bpm": 150.0,
     "offset": -0.404687,
     "difficulties": [
       "Hard"
     ],
-    "audioFile": "Annihilation in F# Minor.ogg",
+    "audioFile": "Annihilation_in_F_Minor.ogg",
     "format": "ogg",
     "keyCount": 4
   },
